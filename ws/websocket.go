@@ -1,4 +1,50 @@
 // Package ws provides WebSocket client functionality for Hyperliquid real-time data.
+//
+// This package offers a simple, type-safe way to subscribe to Hyperliquid WebSocket feeds.
+// Each client uses Go generics to provide compile-time type safety for the data you receive.
+//
+// Basic usage:
+//
+//	client := ws.NewTradesClient("BTC")
+//	defer client.Close()
+//
+//	for {
+//	    trades, err := client.Read()
+//	    if err != nil {
+//	        log.Fatal(err)
+//	    }
+//	    // Process trades...
+//	}
+//
+// Features:
+//   - Automatic connection on first Read()
+//   - Automatic heartbeat (ping every 50s)
+//   - Automatic cleanup on error
+//   - Support for multiple subscriptions (e.g., multiple coins)
+//   - Type-safe data structures
+//
+// Concurrency:
+//
+// Each Client instance is designed for single-threaded use. Create multiple
+// clients if you need to subscribe to multiple feeds concurrently:
+//
+//	go func() {
+//	    client := ws.NewTradesClient("BTC")
+//	    defer client.Close()
+//	    for {
+//	        trades, _ := client.Read()
+//	        // Process BTC trades...
+//	    }
+//	}()
+//
+//	go func() {
+//	    client := ws.NewL2BookClient("ETH")
+//	    defer client.Close()
+//	    for {
+//	        book, _ := client.Read()
+//	        // Process ETH order book...
+//	    }
+//	}()
 package ws
 
 import (
@@ -21,13 +67,19 @@ type wsMessage struct {
 	Data    json.RawMessage `json:"data"`
 }
 
-// Client is a generic WebSocket client that subscribes to a single feed
-// Designed for single-threaded use: one goroutine calls Read() in a loop
+// Client is a generic WebSocket client that subscribes to a single feed.
+//
+// The client handles connection management, heartbeat, and data unmarshaling automatically.
+// Use the New*Client() helper functions to create clients for specific feed types.
+//
+// Designed for single-threaded use: one goroutine calls Read() in a loop.
+// The background ping routine is the only concurrent operation.
+//
+// Type parameter T specifies the data type returned by Read().
 type Client[T any] struct {
 	url          string
 	conn         *websocket.Conn
 	subscription map[string]any
-	// writeMu      sync.Mutex // Serializes WebSocket writes (for ping goroutine)
 	isConnected  bool
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -133,6 +185,8 @@ func (c *Client[T]) start() error {
 	// Send subscription messages
 	subs := c.subscriptionHandler()
 	for _, sub := range subs {
+		s, _ := json.Marshal(sub)
+		fmt.Println(string(s))
 		if err = conn.WriteJSON(sub); err != nil {
 			c.conn.Close()
 			c.isConnected = false
@@ -147,10 +201,18 @@ func (c *Client[T]) start() error {
 	return nil
 }
 
-// Read blocks until data is received and returns the unmarshaled data
-// It automatically connects if not connected, and closes on error
-// It skips subscription response messages and only returns actual data
-// Not thread-safe: should only be called from a single goroutine
+// Read blocks until data is received and returns the unmarshaled data.
+//
+// On first call, Read automatically establishes the WebSocket connection and
+// subscribes to the configured feed. Subsequent calls read from the existing connection.
+//
+// Read filters out subscription responses and pong messages, returning only actual data.
+// Non-JSON messages (like "Websocket connection established.") are also skipped.
+//
+// If an error occurs, the connection is automatically closed before returning.
+// After an error, you must create a new client to reconnect.
+//
+// Not thread-safe: should only be called from a single goroutine.
 func (c *Client[T]) Read() (data T, err error) {
 	// Use defer to automatically close on error
 	defer func() {
@@ -208,8 +270,15 @@ func (c *Client[T]) Read() (data T, err error) {
 	}
 }
 
-// Close closes the WebSocket connection and stops the ping goroutine
-// Safe to call multiple times
+// Close closes the WebSocket connection and stops the ping goroutine.
+//
+// This method:
+//   - Cancels the background ping routine
+//   - Closes the WebSocket connection
+//   - Resets the connection state
+//
+// Safe to call multiple times. Subsequent calls after the first are no-ops.
+// Close is automatically called by Read() when an error occurs.
 func (c *Client[T]) Close() error {
 	// Cancel context to stop ping goroutine
 	if c.cancel != nil {

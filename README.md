@@ -7,10 +7,10 @@ A robust, efficient, and comprehensive Go SDK for the [Hyperliquid](https://hype
 - ✅ **Complete API Coverage**: All 60+ exchange methods and 40+ info endpoints
 - 🔐 **Secure Signing**: EIP-712 signing for all authenticated operations
 - ⚡ **High Performance**: Efficient HTTP client with connection pooling
-- 📡 **WebSocket Support**: Real-time market data and user event subscriptions
+- 📡 **WebSocket Support**: Type-safe WebSocket clients with generics
 - 🛡️ **Type Safe**: Strongly typed with comprehensive error handling
 - 📚 **Well Documented**: Extensive GoDoc comments and examples
-- 🚀 **Production Ready**: Battle-tested error handling and retry logic
+- 🚀 **Production Ready**: Battle-tested error handling and auto-reconnect
 
 ## Installation
 
@@ -117,35 +117,67 @@ package main
 
 import (
     "log"
-    "github.com/dwdwow/hl-go/constants"
-    "github.com/dwdwow/hl-go/types"
     "github.com/dwdwow/hl-go/ws"
 )
 
 func main() {
-    // Create WebSocket manager
-    manager := ws.NewManager(constants.MainnetAPIURL)
+    // Create WebSocket client for BTC trades
+    client := ws.NewTradesClient("BTC")
+    defer client.Close()
 
-    // Start connection
-    if err := manager.Start(); err != nil {
-        log.Fatal(err)
+    // Read trades in a loop
+    for {
+        trades, err := client.Read()
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        for _, trade := range trades {
+            log.Printf("Trade: %s %s @ %s", trade.Coin, trade.Sz, trade.Px)
+        }
     }
-    defer manager.Stop()
+}
+```
 
-    // Subscribe to trades
-    coin := "ETH"
-    _, err := manager.Subscribe(types.Subscription{
-        Type: types.SubscriptionTrades,
-        Coin: &coin,
-    }, func(msg map[string]any) {
-        log.Printf("Trade: %+v", msg)
-    })
-    if err != nil {
-        log.Fatal(err)
+### Multiple Subscriptions
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/dwdwow/hl-go/ws"
+)
+
+func main() {
+    // Subscribe to multiple coins
+    tradesClient := ws.NewTradesClient("BTC", "ETH", "SOL")
+    defer tradesClient.Close()
+
+    // Subscribe to order book
+    bookClient := ws.NewL2BookClient("BTC")
+    defer bookClient.Close()
+
+    // Read from different clients in separate goroutines
+    go func() {
+        for {
+            trades, err := tradesClient.Read()
+            if err != nil {
+                log.Printf("Trades error: %v", err)
+                return
+            }
+            log.Printf("Trades: %+v", trades)
+        }
+    }()
+
+    for {
+        book, err := bookClient.Read()
+        if err != nil {
+            log.Fatal(err)
+        }
+        log.Printf("Book: %s - Bids: %d, Asks: %d",
+            book.Coin, len(book.Levels[0]), len(book.Levels[1]))
     }
-
-    // Keep running
-    select {}
 }
 ```
 
@@ -270,24 +302,87 @@ func main() {
 - `QueryUserDexAbstractionState` - Get DEX abstraction state
 - `QuerySpotDeployAuctionStatus` - Get spot deployment state
 
-### WebSocket Manager (`ws.Manager`)
+### WebSocket Clients (`ws` package)
 
-#### Subscription Types (13 types)
-- `SubscriptionAllMids` - All mid prices updates
-- `SubscriptionL2Book` - L2 orderbook updates
-- `SubscriptionTrades` - Trade executions
-- `SubscriptionBBO` - Best bid/offer updates
-- `SubscriptionCandle` - Candlestick data
-- `SubscriptionActiveAssetCtx` - Asset context (funding, OI)
-- `SubscriptionActiveAssetData` - User asset data
-- `SubscriptionUserEvents` - User trading events
-- `SubscriptionUserFills` - User fill updates
-- `SubscriptionOrderUpdates` - Order status changes
-- `SubscriptionUserFundings` - Funding payments
-- `SubscriptionUserNonFundingLedgerUpdates` - Ledger updates
-- `SubscriptionWebData2` - Frontend web data
+#### Features
+- **Type-Safe Generics** - Compile-time type safety for all subscriptions
+- **Simple API** - Blocking `Read()` method, similar to standard I/O
+- **Auto-Connect** - Automatically connects on first `Read()`
+- **Auto-Heartbeat** - Ping sent every 50 seconds
+- **Auto-Cleanup** - Connection closed automatically on error
+- **Multi-Subscription** - Subscribe to multiple coins in a single client
+
+#### Market Data Clients
+- `NewTradesClient(coins...)` - Trade executions for one or more coins
+- `NewL2BookClient(coins...)` - L2 orderbook updates for one or more coins
+- `NewBboClient(coins...)` - Best bid/offer updates for one or more coins
+- `NewCandleClient(interval, coins...)` - Candlestick data with custom intervals
+- `NewAllMidsClient()` - All mid prices updates
+- `NewActiveAssetCtxClient(coins...)` - Asset context (funding, open interest)
+
+#### User Data Clients
+- `NewUserFillsClient(user)` - User fill updates (snapshot + streaming)
+- `NewOrderUpdatesClient(user)` - Order status changes
+- `NewUserEventsClient(user)` - User trading events (fills, funding, liquidation)
+- `NewUserFundingsClient(user)` - Funding payments
+- `NewActiveAssetDataClient(user, coin)` - Active asset data for user
 
 ## Advanced Usage
+
+### WebSocket Clients
+
+The WebSocket package provides type-safe, easy-to-use clients for real-time data:
+
+```go
+// Single coin subscription
+client := ws.NewTradesClient("BTC")
+defer client.Close()
+
+for {
+    trades, err := client.Read()  // Blocks until data arrives
+    if err != nil {
+        log.Fatal(err)
+    }
+    // trades is []ws.WsTrade, fully typed
+}
+```
+
+Key features:
+- **Automatic connection**: No need to manually connect, just call `Read()`
+- **Automatic heartbeat**: Ping sent every 50 seconds to keep connection alive
+- **Type safety**: Generic `Client[T]` provides compile-time type checking
+- **Error handling**: Connection automatically closed on error
+- **Multi-subscription**: Subscribe to multiple coins in one client
+
+```go
+// Multi-coin subscription
+client := ws.NewTradesClient("BTC", "ETH", "SOL")
+// Receives trades from all three coins
+```
+
+Concurrent usage:
+```go
+// Each client in its own goroutine
+go func() {
+    client := ws.NewTradesClient("BTC")
+    defer client.Close()
+    for {
+        trades, _ := client.Read()
+        // Process BTC trades
+    }
+}()
+
+go func() {
+    client := ws.NewL2BookClient("ETH")
+    defer client.Close()
+    for {
+        book, _ := client.Read()
+        // Process ETH orderbook
+    }
+}()
+```
+
+See the `ws/README.md` for complete documentation.
 
 ### Using API Wallets (Agents)
 
@@ -494,37 +589,90 @@ orderType := types.OrderType{
 }
 ```
 
-### Subscription Types
+### WebSocket Examples
 
 ```go
-// All mids
-subscription := types.Subscription{
-    Type: types.SubscriptionAllMids,
-}
+// Subscribe to trades for a single coin
+client := ws.NewTradesClient("BTC")
+defer client.Close()
 
-// L2 book for specific coin
-coin := "ETH"
-subscription := types.Subscription{
-    Type: types.SubscriptionL2Book,
-    Coin: &coin,
-}
-
-// User fills
-user := "0x..."
-subscription := types.Subscription{
-    Type: types.SubscriptionUserFills,
-    User: &user,
-}
-
-// Candles
-coin := "BTC"
-interval := "1m"
-subscription := types.Subscription{
-    Type:     types.SubscriptionCandle,
-    Coin:     &coin,
-    Interval: &interval,
+for {
+    trades, err := client.Read()
+    if err != nil {
+        log.Fatal(err)
+    }
+    // Process trades...
 }
 ```
+
+```go
+// Subscribe to trades for multiple coins
+client := ws.NewTradesClient("BTC", "ETH", "SOL")
+defer client.Close()
+
+for {
+    trades, err := client.Read()
+    if err != nil {
+        log.Fatal(err)
+    }
+    // All trades from BTC, ETH, and SOL
+}
+```
+
+```go
+// Subscribe to L2 order book
+client := ws.NewL2BookClient("ETH")
+defer client.Close()
+
+for {
+    book, err := client.Read()
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Bids: %v, Asks: %v", book.Levels[0], book.Levels[1])
+}
+```
+
+```go
+// Subscribe to user fills
+client := ws.NewUserFillsClient("0x...")
+defer client.Close()
+
+for {
+    fills, err := client.Read()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    if fills.IsSnapshot != nil && *fills.IsSnapshot {
+        log.Println("Received snapshot")
+    }
+
+    for _, fill := range fills.Fills {
+        log.Printf("Fill: %s %s @ %s", fill.Coin, fill.Sz, fill.Px)
+    }
+}
+```
+
+```go
+// Subscribe to candles with 1-minute interval
+client := ws.NewCandleClient("1m", "BTC")
+defer client.Close()
+
+for {
+    candles, err := client.Read()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    for _, candle := range candles {
+        log.Printf("OHLCV: %f %f %f %f %f",
+            candle.O, candle.H, candle.L, candle.C, candle.V)
+    }
+}
+```
+
+Supported candle intervals: `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `12h`, `1d`, `3d`, `1w`, `1M`
 
 ## Constants
 
@@ -549,7 +697,7 @@ hl-go/
 ├── types/            # Type definitions and structures
 ├── signing/          # EIP-712 signing implementation
 ├── utils/            # Utility functions (address, float conversion)
-├── ws/               # WebSocket manager
+├── ws/               # WebSocket clients with generics
 ├── constants/        # Configuration constants
 └── README.md         # This file
 ```

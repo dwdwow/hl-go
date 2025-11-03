@@ -1,6 +1,10 @@
+// Package ws types defines all WebSocket message structures for Hyperliquid.
 package ws
 
-// WebSocket data type definitions based on Hyperliquid API documentation
+// WebSocket data type definitions based on Hyperliquid API documentation.
+//
+// These types represent the various messages received from Hyperliquid WebSocket feeds.
+// All types are designed to match the exact structure of messages from the API.
 
 // SubscriptionType represents the type of WebSocket subscription
 type SubscriptionType string
