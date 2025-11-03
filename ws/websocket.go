@@ -135,18 +135,6 @@ func (c *Client[T]) start() error {
 	c.conn = conn
 	c.isConnected = true
 
-	// Read and ignore the "Websocket connection established." message
-	fmt.Println("[DEBUG] Reading initial message...")
-	_, msg, err := conn.ReadMessage()
-	if err != nil {
-		c.conn.Close()
-		c.isConnected = false
-		c.cancel()
-		fmt.Printf("[DEBUG] Failed to read initial message: %v\n", err)
-		return fmt.Errorf("failed to read initial message: %w", err)
-	}
-	fmt.Printf("[DEBUG] Initial message: %s\n", string(msg))
-
 	// Send subscription messages
 	subs := c.subscriptionHandler()
 	fmt.Printf("[DEBUG] Sending %d subscription(s)\n", len(subs))
