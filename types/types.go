@@ -124,8 +124,8 @@ type ModifyRequest struct {
 
 // ModifyWire is the wire format for modify requests
 type ModifyWire struct {
-	Oid   any       `json:"oid"`
-	Order OrderWire `json:"order"`
+	Oid   any       `json:"oid" msgpack:"oid"`
+	Order OrderWire `json:"order" msgpack:"order"`
 }
 
 // CancelRequest represents a request to cancel an order
