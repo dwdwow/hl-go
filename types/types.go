@@ -297,58 +297,6 @@ type L2BookData struct {
 	Time   int64        `json:"time"`
 }
 
-// SubscriptionType represents the type of WebSocket subscription
-type SubscriptionType string
-
-const (
-	// SubscriptionAllMids subscribes to all mid prices
-	SubscriptionAllMids SubscriptionType = "allMids"
-
-	// SubscriptionL2Book subscribes to L2 order book for a specific coin
-	SubscriptionL2Book SubscriptionType = "l2Book"
-
-	// SubscriptionTrades subscribes to trades for a specific coin
-	SubscriptionTrades SubscriptionType = "trades"
-
-	// SubscriptionBBO subscribes to best bid/offer for a specific coin
-	SubscriptionBBO SubscriptionType = "bbo"
-
-	// SubscriptionCandle subscribes to candlestick data for a specific coin
-	SubscriptionCandle SubscriptionType = "candle"
-
-	// SubscriptionActiveAssetCtx subscribes to asset context (funding, open interest, etc.)
-	SubscriptionActiveAssetCtx SubscriptionType = "activeAssetCtx"
-
-	// SubscriptionActiveAssetData subscribes to active asset data for a user and coin
-	SubscriptionActiveAssetData SubscriptionType = "activeAssetData"
-
-	// SubscriptionUserEvents subscribes to user trading events
-	SubscriptionUserEvents SubscriptionType = "userEvents"
-
-	// SubscriptionUserFills subscribes to user trade fills
-	SubscriptionUserFills SubscriptionType = "userFills"
-
-	// SubscriptionOrderUpdates subscribes to order status updates
-	SubscriptionOrderUpdates SubscriptionType = "orderUpdates"
-
-	// SubscriptionUserFundings subscribes to user funding payments
-	SubscriptionUserFundings SubscriptionType = "userFundings"
-
-	// SubscriptionUserNonFundingLedgerUpdates subscribes to non-funding ledger updates
-	SubscriptionUserNonFundingLedgerUpdates SubscriptionType = "userNonFundingLedgerUpdates"
-
-	// SubscriptionWebData2 subscribes to web data for a user
-	SubscriptionWebData2 SubscriptionType = "webData2"
-)
-
-// Subscription represents a WebSocket subscription
-type Subscription struct {
-	Type     SubscriptionType `json:"type"`
-	Coin     *string          `json:"coin,omitempty"`
-	User     *string          `json:"user,omitempty"`
-	Interval *string          `json:"interval,omitempty"`
-}
-
 // Cloid represents a client order ID (16 bytes hex string)
 type Cloid struct {
 	raw string
