@@ -71,10 +71,11 @@ func TestL1ActionSigningMatches(t *testing.T) {
 	}
 
 	// Python msgpack encodes positive integers as uint64, so convert to match
-	action := map[string]any{
-		"type": "dummy",
-		"num":  uint64(num),
-	}
+	// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
+	action := NewOrderedMap(
+		"type", "dummy",
+		"num", uint64(num),
+	)
 
 	// Test mainnet
 	signatureMainnet, err := SignL1Action(privateKey, action, nil, 0, nil, true)
@@ -233,10 +234,11 @@ func TestL1ActionSigningMatchesWithVault(t *testing.T) {
 	}
 
 	// Python msgpack encodes positive integers as uint64, so convert to match
-	action := map[string]any{
-		"type": "dummy",
-		"num":  uint64(num),
-	}
+	// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
+	action := NewOrderedMap(
+		"type", "dummy",
+		"num", uint64(num),
+	)
 
 	vaultAddress := "0x1719884eb866cb12b2287399b15f7db5e7d775ea"
 

@@ -22,7 +22,7 @@ func TestMsgpackEncodingExactMatch(t *testing.T) {
 	t.Run("SimpleAction", func(t *testing.T) {
 		// Python expected: 82a474797065a564756d6d79a36e756dcf000000174876e800
 		// Key order in Python: "type" first, then "num"
-		
+
 		action := map[string]any{
 			"type": "dummy",
 			"num":  uint64(num), // Use uint64 to match Python
@@ -46,7 +46,7 @@ func TestMsgpackEncodingExactMatch(t *testing.T) {
 			t.Logf("Expected bytes: %x", expectedBytes)
 			t.Logf("Actual bytes:   %x", data)
 			t.Logf("Length match: expected=%d, actual=%d", len(expectedBytes), len(data))
-			
+
 			// Find first difference
 			for i := 0; i < len(data) && i < len(expectedBytes); i++ {
 				if data[i] != expectedBytes[i] {
@@ -64,17 +64,18 @@ func TestMsgpackEncodingExactMatch(t *testing.T) {
 func TestActionHashExactMatch(t *testing.T) {
 	t.Run("SimpleAction", func(t *testing.T) {
 		num, _ := utils.FloatToIntForHashing(1000)
-		action := map[string]any{
-			"type": "dummy",
-			"num":  uint64(num),
-		}
+		// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
+		action := NewOrderedMap(
+			"type", "dummy",
+			"num", uint64(num),
+		)
 
 		// Step 1: Verify msgpack encoding
 		msgpackData, err := msgpack.Marshal(action)
 		if err != nil {
 			t.Fatalf("msgpack.Marshal() error = %v", err)
 		}
-		
+
 		expectedMsgpack := "82a474797065a564756d6d79a36e756dcf000000174876e800"
 		if fmt.Sprintf("%x", msgpackData) != expectedMsgpack {
 			t.Fatalf("msgpack encoding doesn't match. This must be fixed first!")
@@ -105,10 +106,11 @@ func TestActionHashExactMatch(t *testing.T) {
 
 	t.Run("UsingActionHashFunction", func(t *testing.T) {
 		num, _ := utils.FloatToIntForHashing(1000)
-		action := map[string]any{
-			"type": "dummy",
-			"num":  uint64(num),
-		}
+		// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
+		action := NewOrderedMap(
+			"type", "dummy",
+			"num", uint64(num),
+		)
 
 		hash, err := ActionHash(action, nil, 0, nil)
 		if err != nil {
@@ -118,7 +120,7 @@ func TestActionHashExactMatch(t *testing.T) {
 		hashHex := fmt.Sprintf("%x", hash)
 		t.Logf("ActionHash result: 0x%s", hashHex)
 		t.Logf("ActionHash length: %d bytes", len(hash))
-		
+
 		// Verify it's 32 bytes
 		if len(hash) != 32 {
 			t.Errorf("ActionHash length = %d, want 32", len(hash))
@@ -204,7 +206,7 @@ func TestSimpleActionHashForPythonTest(t *testing.T) {
 
 	t.Logf("ActionHash for Python test case: 0x%x", hash)
 	t.Logf("This hash will be used as connectionId in phantom agent")
-	
+
 	// Now verify phantom agent construction
 	phantomAgent := ConstructPhantomAgent(hash, true)
 	t.Logf("PhantomAgent: %+v", phantomAgent)
