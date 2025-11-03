@@ -7,7 +7,7 @@ import (
 )
 
 func TestWebSocket_Trades(t *testing.T) {
-	client := NewTradesClient("HYPE/USDC")
+	client := NewTradesClient("@107")
 
 	trades, err := client.Read()
 	if err != nil {

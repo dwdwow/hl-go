@@ -20,6 +20,16 @@ func getTestInfo(t *testing.T) *Info {
 	return info
 }
 
+func TestInfo_NameToCoin(t *testing.T) {
+	info := getTestInfo(t)
+
+	coin, err := info.NameToCoin("HYPE")
+	if err != nil {
+		t.Fatalf("NameToCoin() error = %v", err)
+	}
+	t.Logf("Coin: %s", coin)
+}
+
 func TestInfo_AllMids(t *testing.T) {
 	info := getTestInfo(t)
 

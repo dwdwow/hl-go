@@ -80,6 +80,14 @@ func (i *Info) initializeMetadata() error {
 	return nil
 }
 
+func (i *Info) NameToCoin(name string) (string, error) {
+	coin, ok := i.nameToCoin[name]
+	if !ok {
+		return "", fmt.Errorf("unknown coin name: %s", name)
+	}
+	return coin, nil
+}
+
 // NameToAsset converts a coin name to its asset ID
 func (i *Info) NameToAsset(name string) (int, error) {
 	coin, ok := i.nameToCoin[name]

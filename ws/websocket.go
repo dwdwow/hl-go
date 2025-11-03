@@ -109,8 +109,6 @@ func (c *Client[T]) subscriptionHandler() []map[string]any {
 // It also starts a background goroutine to send ping messages periodically
 // Not thread-safe: should only be called from Read() once
 func (c *Client[T]) start() error {
-	fmt.Println("[DEBUG] start() called")
-
 	if c.isConnected {
 		return fmt.Errorf("client already started")
 	}
@@ -123,36 +121,27 @@ func (c *Client[T]) start() error {
 		HandshakeTimeout: 10 * time.Second,
 	}
 
-	fmt.Printf("[DEBUG] Dialing %s...\n", c.url)
 	conn, _, err := dialer.Dial(c.url, nil)
 	if err != nil {
 		c.cancel()
-		fmt.Printf("[DEBUG] Dial failed: %v\n", err)
 		return fmt.Errorf("failed to connect to websocket: %w", err)
 	}
-	fmt.Println("[DEBUG] Dial succeeded")
 
 	c.conn = conn
 	c.isConnected = true
 
 	// Send subscription messages
 	subs := c.subscriptionHandler()
-	fmt.Printf("[DEBUG] Sending %d subscription(s)\n", len(subs))
-	for i, sub := range subs {
-		s, _ := json.Marshal(sub)
-		fmt.Printf("[DEBUG] Subscription %d: %s\n", i, string(s))
+	for _, sub := range subs {
 		if err = conn.WriteJSON(sub); err != nil {
 			c.conn.Close()
 			c.isConnected = false
 			c.cancel()
-			fmt.Printf("[DEBUG] WriteJSON failed: %v\n", err)
 			return fmt.Errorf("failed to send subscription: %w", err)
 		}
 	}
-	fmt.Println("[DEBUG] All subscriptions sent")
 
 	// Start ping goroutine
-	fmt.Println("[DEBUG] Starting ping goroutine")
 	go c.pingRoutine()
 
 	return nil
@@ -163,51 +152,37 @@ func (c *Client[T]) start() error {
 // It skips subscription response messages and only returns actual data
 // Not thread-safe: should only be called from a single goroutine
 func (c *Client[T]) Read() (data T, err error) {
-	fmt.Println("[DEBUG] Read() called")
-
 	// Use defer to automatically close on error
 	defer func() {
 		if err != nil {
-			fmt.Printf("[DEBUG] Read() error, closing: %v\n", err)
 			c.Close()
 		}
 	}()
 
 	// Auto-start if not connected
 	if !c.isConnected || c.conn == nil {
-		fmt.Println("[DEBUG] Not connected, calling start()")
 		if err = c.start(); err != nil {
-			fmt.Printf("[DEBUG] start() failed: %v\n", err)
 			return data, fmt.Errorf("failed to start client: %w", err)
 		}
-		fmt.Println("[DEBUG] start() succeeded")
 	}
 
 	conn := c.conn
 	if conn == nil {
 		err = fmt.Errorf("client not connected")
-		fmt.Println("[DEBUG] conn is nil after start")
 		return
 	}
 
-	fmt.Println("[DEBUG] Entering read loop")
 	for {
 		// Read raw message (blocking)
-		fmt.Println("[DEBUG] Calling ReadMessage()...")
-		msgType, rawMsg, readErr := conn.ReadMessage()
+		_, rawMsg, readErr := conn.ReadMessage()
 		if readErr != nil {
 			err = readErr
-			fmt.Printf("[DEBUG] ReadMessage() error: %v\n", readErr)
 			return
 		}
-
-		// DEBUG: Print message type and first 100 chars
-		fmt.Printf("[DEBUG] msgType=%d, len=%d, msg=%s\n", msgType, len(rawMsg), string(rawMsg[:min(len(rawMsg), 100)]))
 
 		// Handle text messages like "Websocket connection established."
 		if len(rawMsg) > 0 && rawMsg[0] != '{' {
 			// Skip non-JSON messages
-			fmt.Println("[DEBUG] Skipping non-JSON message")
 			continue
 		}
 
@@ -215,15 +190,11 @@ func (c *Client[T]) Read() (data T, err error) {
 		var msg wsMessage
 		if unmarshalErr := json.Unmarshal(rawMsg, &msg); unmarshalErr != nil {
 			// If it's not a valid wsMessage, skip it
-			fmt.Printf("[DEBUG] Failed to unmarshal wsMessage: %v\n", unmarshalErr)
 			continue
 		}
 
-		fmt.Printf("[DEBUG] Parsed wsMessage: channel=%s\n", msg.Channel)
-
 		// Skip subscription response and pong messages
 		if msg.Channel == "subscriptionResponse" || msg.Channel == "pong" {
-			fmt.Printf("[DEBUG] Skipping %s message\n", msg.Channel)
 			continue
 		}
 
@@ -233,17 +204,8 @@ func (c *Client[T]) Read() (data T, err error) {
 			return
 		}
 
-		fmt.Println("[DEBUG] Successfully unmarshaled data, returning")
 		return data, nil
 	}
-}
-
-// min helper for debug output
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // Close closes the WebSocket connection and stops the ping goroutine
