@@ -56,8 +56,79 @@ func NewAPI(baseURL string, timeout time.Duration) *API {
 	}
 }
 
-// Post makes a POST request to the API
-func (a *API) Post(urlPath string, payload any, result any) error {
+type ExchangeResponse struct {
+	Status   string          `json:"status"`
+	Response json.RawMessage `json:"response,omitempty"`
+}
+
+func (a *API) exchangePost(urlPath string, payload any, result any) error {
+	// Marshal payload
+	var body []byte
+	var err error
+
+	if payload != nil {
+		body, err = json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("failed to marshal request: %w", err)
+		}
+	} else {
+		body = []byte("{}")
+	}
+
+	// Create request
+	url := a.BaseURL + urlPath
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Make request
+	resp, err := a.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	respData := &ExchangeResponse{}
+
+	if err := json.Unmarshal(respBody, respData); err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Check for HTTP errors
+	if resp.StatusCode >= 400 {
+		return a.handleError(resp.StatusCode, respData.Response)
+	}
+
+	// Check API status
+	if respData.Status != "ok" {
+		// Response is an error message string
+		var errMsg string
+		if err := json.Unmarshal(respData.Response, &errMsg); err != nil {
+			return fmt.Errorf("API error (status: %s): failed to parse error message", respData.Status)
+		}
+		return fmt.Errorf("API error: %s", errMsg)
+	}
+
+	// Parse response (status is "ok", response is data object)
+	if result != nil {
+		if err := json.Unmarshal(respData.Response, result); err != nil {
+			return fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *API) infoPost(urlPath string, payload any, result any) error {
 	// Marshal payload
 	var body []byte
 	var err error
@@ -101,7 +172,7 @@ func (a *API) Post(urlPath string, payload any, result any) error {
 	// Parse response
 	if result != nil {
 		if err := json.Unmarshal(respBody, result); err != nil {
-			return fmt.Errorf("failed to parse response: %w (body: %s)", err, string(respBody))
+			return fmt.Errorf("failed to parse response: %w", err)
 		}
 	}
 
@@ -117,9 +188,9 @@ func (a *API) handleError(statusCode int, body []byte) error {
 
 	// Try to parse error as JSON
 	var errResp struct {
-		Code string      `json:"code"`
-		Msg  string      `json:"msg"`
-		Data any `json:"data"`
+		Code string `json:"code"`
+		Msg  string `json:"msg"`
+		Data any    `json:"data"`
 	}
 
 	if err := json.Unmarshal(body, &errResp); err == nil {

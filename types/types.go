@@ -1,8 +1,20 @@
-// Package types provides type definitions for the Hyperliquid SDK.
+// Package types provides comprehensive type definitions for the Hyperliquid SDK.
+//
+// This package contains all the data structures used for interacting with the
+// Hyperliquid API, including:
+//   - Order types and configurations (limit, trigger, TP/SL)
+//   - Request and response structures for exchange operations
+//   - Market data and user state structures
+//   - WebSocket subscription types
+//   - Signature and authentication types
+//
+// The types are designed to be type-safe and user-friendly, with custom
+// string types for enums to provide better IDE support and compile-time validation.
 package types
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -53,7 +65,7 @@ const (
 
 // LimitOrderType represents a limit order configuration
 type LimitOrderType struct {
-	Tif Tif `json:"tif"`
+	Tif Tif `json:"tif" msgpack:"tif"`
 }
 
 // TriggerOrderType represents a trigger order configuration
@@ -65,9 +77,9 @@ type TriggerOrderType struct {
 
 // TriggerOrderTypeWire is the wire format for trigger orders
 type TriggerOrderTypeWire struct {
-	TriggerPx string `json:"triggerPx"`
-	IsMarket  bool   `json:"isMarket"`
-	Tpsl      Tpsl   `json:"tpsl"`
+	TriggerPx string `json:"triggerPx" msgpack:"triggerPx"`
+	IsMarket  bool   `json:"isMarket" msgpack:"isMarket"`
+	Tpsl      Tpsl   `json:"tpsl" msgpack:"tpsl"`
 }
 
 // OrderType represents the order type (limit or trigger)
@@ -78,42 +90,42 @@ type OrderType struct {
 
 // OrderTypeWire is the wire format for order types
 type OrderTypeWire struct {
-	Limit   *LimitOrderType       `json:"limit,omitempty"`
-	Trigger *TriggerOrderTypeWire `json:"trigger,omitempty"`
+	Limit   *LimitOrderType       `json:"limit,omitempty" msgpack:"limit,omitempty"`
+	Trigger *TriggerOrderTypeWire `json:"trigger,omitempty" msgpack:"trigger,omitempty"`
 }
 
 // OrderRequest represents a request to place an order
 type OrderRequest struct {
-	Coin       string     `json:"coin"`
-	IsBuy      bool       `json:"is_buy"`
-	Sz         float64    `json:"sz"`
-	LimitPx    float64    `json:"limit_px"`
-	OrderType  OrderType  `json:"order_type"`
-	ReduceOnly bool       `json:"reduce_only"`
-	Cloid      *Cloid     `json:"cloid,omitempty"`
+	Coin       string    `json:"coin"`
+	IsBuy      bool      `json:"is_buy"`
+	Sz         float64   `json:"sz"`
+	LimitPx    float64   `json:"limit_px"`
+	OrderType  OrderType `json:"order_type"`
+	ReduceOnly bool      `json:"reduce_only"`
+	Cloid      *Cloid    `json:"cloid,omitempty"`
 }
 
 // OrderWire is the wire format for orders sent to the API
 type OrderWire struct {
-	Asset      int           `json:"a"`
-	IsBuy      bool          `json:"b"`
-	LimitPx    string        `json:"p"`
-	Sz         string        `json:"s"`
-	ReduceOnly bool          `json:"r"`
-	OrderType  OrderTypeWire `json:"t"`
-	Cloid      *string       `json:"c,omitempty"`
+	Asset      int           `json:"a" msgpack:"a"`
+	IsBuy      bool          `json:"b" msgpack:"b"`
+	LimitPx    string        `json:"p" msgpack:"p"`
+	Sz         string        `json:"s" msgpack:"s"`
+	ReduceOnly bool          `json:"r" msgpack:"r"`
+	OrderType  OrderTypeWire `json:"t" msgpack:"t"`
+	Cloid      *string       `json:"c,omitempty" msgpack:"c,omitempty"`
 }
 
 // ModifyRequest represents a request to modify an order
 type ModifyRequest struct {
-	Oid   any  `json:"oid"` // can be int or Cloid
+	Oid   any          `json:"oid"` // can be int or Cloid
 	Order OrderRequest `json:"order"`
 }
 
 // ModifyWire is the wire format for modify requests
 type ModifyWire struct {
-	Oid   any `json:"oid"`
-	Order OrderWire   `json:"order"`
+	Oid   any       `json:"oid"`
+	Order OrderWire `json:"order"`
 }
 
 // CancelRequest represents a request to cancel an order
@@ -130,8 +142,9 @@ type CancelByCloidRequest struct {
 
 // AssetInfo represents information about a trading asset
 type AssetInfo struct {
-	Name       string `json:"name"`
-	SzDecimals int    `json:"szDecimals"`
+	Name        string `json:"name"`
+	SzDecimals  int    `json:"szDecimals"`
+	MaxLeverage int    `json:"maxLeverage"`
 }
 
 // Meta represents exchange metadata
@@ -147,16 +160,22 @@ type SpotAssetInfo struct {
 	IsCanonical bool   `json:"isCanonical"`
 }
 
+// EvmContract represents information about an EVM (Ethereum Virtual Machine) contract.
+type EvmContract struct {
+	Address             string `json:"address"`
+	EvmExtraWeiDecimals int    `json:"evm_extra_wei_decimals"`
+}
+
 // SpotTokenInfo represents information about a spot token
 type SpotTokenInfo struct {
-	Name        string  `json:"name"`
-	SzDecimals  int     `json:"szDecimals"`
-	WeiDecimals int     `json:"weiDecimals"`
-	Index       int     `json:"index"`
-	TokenID     string  `json:"tokenId"`
-	IsCanonical bool    `json:"isCanonical"`
-	EvmContract *string `json:"evmContract,omitempty"`
-	FullName    *string `json:"fullName,omitempty"`
+	Name        string       `json:"name"`
+	SzDecimals  int          `json:"szDecimals"`
+	WeiDecimals int          `json:"weiDecimals"`
+	Index       int          `json:"index"`
+	TokenID     string       `json:"tokenId"`
+	IsCanonical bool         `json:"isCanonical"`
+	EvmContract *EvmContract `json:"evmContract,omitempty"`
+	FullName    *string      `json:"fullName,omitempty"`
 }
 
 // SpotMeta represents spot exchange metadata
@@ -177,8 +196,8 @@ type SpotAssetCtx struct {
 
 // SpotMetaAndAssetCtxs represents spot metadata with asset contexts
 type SpotMetaAndAssetCtxs struct {
-	Meta       SpotMeta       `json:"meta"`
-	AssetCtxs  []SpotAssetCtx `json:"assetCtxs"`
+	Meta      SpotMeta       `json:"meta"`
+	AssetCtxs []SpotAssetCtx `json:"assetCtxs"`
 }
 
 // BuilderInfo represents builder fee information
@@ -203,15 +222,15 @@ type Leverage struct {
 
 // Position represents a trading position
 type Position struct {
-	Coin           string  `json:"coin"`
-	EntryPx        *string `json:"entryPx"`
+	Coin           string   `json:"coin"`
+	EntryPx        *string  `json:"entryPx"`
 	Leverage       Leverage `json:"leverage"`
-	LiquidationPx  *string `json:"liquidationPx"`
-	MarginUsed     string  `json:"marginUsed"`
-	PositionValue  string  `json:"positionValue"`
-	ReturnOnEquity string  `json:"returnOnEquity"`
-	Szi            string  `json:"szi"`
-	UnrealizedPnl  string  `json:"unrealizedPnl"`
+	LiquidationPx  *string  `json:"liquidationPx"`
+	MarginUsed     string   `json:"marginUsed"`
+	PositionValue  string   `json:"positionValue"`
+	ReturnOnEquity string   `json:"returnOnEquity"`
+	Szi            string   `json:"szi"`
+	UnrealizedPnl  string   `json:"unrealizedPnl"`
 }
 
 // AssetPosition represents an asset position wrapper
@@ -273,9 +292,9 @@ type L2Level struct {
 
 // L2BookData represents L2 order book data
 type L2BookData struct {
-	Coin   string      `json:"coin"`
+	Coin   string       `json:"coin"`
 	Levels [2][]L2Level `json:"levels"` // [bids, asks]
-	Time   int64       `json:"time"`
+	Time   int64        `json:"time"`
 }
 
 // SubscriptionType represents the type of WebSocket subscription
@@ -384,4 +403,134 @@ func (c *Cloid) UnmarshalJSON(data []byte) error {
 	}
 	c.raw = cloid.raw
 	return nil
+}
+
+// Exchange Response Types
+
+// ApiResponse is the common response structure for all exchange API calls
+type ApiResponse struct {
+	Status   string          `json:"status"` // "ok" or "err"
+	Response json.RawMessage `json:"response,omitempty"`
+}
+
+// DecodeResponse decodes the response field based on status
+// If status is not "ok", it decodes response as error string
+// If status is "ok", it decodes response into the provided struct
+func (r *ApiResponse) DecodeResponse(v interface{}) error {
+	if r.Status != "ok" {
+		// Response is an error string
+		var errMsg string
+		if err := json.Unmarshal(r.Response, &errMsg); err != nil {
+			return fmt.Errorf("failed to decode error message: %w", err)
+		}
+		return fmt.Errorf("%s", errMsg)
+	}
+
+	// Response is the actual data, decode into v
+	if err := json.Unmarshal(r.Response, v); err != nil {
+		return fmt.Errorf("failed to decode response data: %w", err)
+	}
+	return nil
+}
+
+// GetError returns the error message if status is not "ok"
+func (r *ApiResponse) GetError() (string, error) {
+	if r.Status == "ok" {
+		return "", nil
+	}
+	var errMsg string
+	if err := json.Unmarshal(r.Response, &errMsg); err != nil {
+		return "", fmt.Errorf("failed to decode error message: %w", err)
+	}
+	return errMsg, nil
+}
+
+// OrderResponse represents the response from order placement
+type OrderResponse struct {
+	Type string        `json:"type"` // "order"
+	Data OrderDataBody `json:"data"`
+}
+
+// OrderDataBody represents the actual order data
+type OrderDataBody struct {
+	Statuses []OrderStatus `json:"statuses"`
+}
+
+// OrderStatus represents the status of a single order
+type OrderStatus struct {
+	Resting *RestingOrder `json:"resting,omitempty"`
+	Filled  *FilledOrder  `json:"filled,omitempty"`
+	Error   string        `json:"error,omitempty"`
+}
+
+// RestingOrder represents an order that is resting on the book
+type RestingOrder struct {
+	Oid int `json:"oid"` // Order ID
+}
+
+// FilledOrder represents a filled order
+type FilledOrder struct {
+	TotalSz string `json:"totalSz,omitempty"`
+	AvgPx   string `json:"avgPx,omitempty"`
+	Oid     int    `json:"oid,omitempty"`
+}
+
+// CancelResponse represents the response from order cancellation
+type CancelResponse struct {
+	Type string         `json:"type"` // "cancel" or "cancelByCloid"
+	Data CancelDataBody `json:"data"`
+}
+
+// CancelDataBody represents the actual cancel data
+type CancelDataBody struct {
+	Statuses []string `json:"statuses"` // e.g. ["success"]
+}
+
+// ModifyResponse represents the response from order modification
+type ModifyResponse struct {
+	Type string         `json:"type"` // "modify" or "batchModify"
+	Data ModifyDataBody `json:"data"`
+}
+
+// ModifyDataBody represents the actual modify data
+type ModifyDataBody struct {
+	Statuses []OrderStatus `json:"statuses"`
+}
+
+// TWAPOrderResponse represents the response from TWAP order placement
+type TWAPOrderResponse struct {
+	Type string            `json:"type"` // "twapOrder"
+	Data TWAPOrderDataBody `json:"data"`
+}
+
+// TWAPOrderDataBody represents the actual TWAP order data
+type TWAPOrderDataBody struct {
+	Status TWAPOrderStatus `json:"status"`
+}
+
+// TWAPOrderStatus represents the status of a TWAP order
+type TWAPOrderStatus struct {
+	Running *TWAPRunning `json:"running,omitempty"`
+	Error   string       `json:"error,omitempty"`
+}
+
+// TWAPRunning represents a running TWAP order
+type TWAPRunning struct {
+	TwapID int `json:"twapId"`
+}
+
+// TWAPCancelResponse represents the response from TWAP order cancellation
+type TWAPCancelResponse struct {
+	Type string             `json:"type"` // "twapCancel"
+	Data TWAPCancelDataBody `json:"data"`
+}
+
+// TWAPCancelDataBody represents the actual TWAP cancel data
+type TWAPCancelDataBody struct {
+	Status string `json:"status"` // "success"
+}
+
+// DefaultResponse represents the default response for most operations
+type DefaultResponse struct {
+	Type string `json:"type"` // "default"
 }

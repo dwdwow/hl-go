@@ -105,7 +105,7 @@ func (i *Info) UserState(address string, dex string) (*types.UserState, error) {
 	}
 
 	var result types.UserState
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -120,7 +120,7 @@ func (i *Info) SpotUserState(address string) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -136,7 +136,7 @@ func (i *Info) OpenOrders(address string, dex string) ([]types.OpenOrder, error)
 	}
 
 	var result []types.OpenOrder
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +152,7 @@ func (i *Info) FrontendOpenOrders(address string, dex string) ([]map[string]any,
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -167,7 +167,7 @@ func (i *Info) AllMids(dex string) (map[string]string, error) {
 	}
 
 	var result map[string]string
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -182,7 +182,7 @@ func (i *Info) UserFills(address string) ([]types.Fill, error) {
 	}
 
 	var result []types.Fill
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -203,7 +203,7 @@ func (i *Info) UserFillsByTime(address string, startTime int64, endTime *int64, 
 	}
 
 	var result []types.Fill
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -218,7 +218,7 @@ func (i *Info) Meta(dex string) (*types.Meta, error) {
 	}
 
 	var result types.Meta
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -232,7 +232,7 @@ func (i *Info) MetaAndAssetCtxs() (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -246,7 +246,7 @@ func (i *Info) PerpDexs() ([]map[string]any, error) {
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -260,7 +260,7 @@ func (i *Info) SpotMeta() (*types.SpotMeta, error) {
 	}
 
 	var result types.SpotMeta
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -274,7 +274,7 @@ func (i *Info) SpotMetaAndAssetCtxs() (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -299,7 +299,7 @@ func (i *Info) FundingHistory(name string, startTime int64, endTime *int64) ([]m
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -319,7 +319,7 @@ func (i *Info) UserFundingHistory(user string, startTime int64, endTime *int64) 
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -339,7 +339,7 @@ func (i *Info) L2Snapshot(name string) (*types.L2BookData, error) {
 	}
 
 	var result types.L2BookData
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -366,7 +366,7 @@ func (i *Info) CandlesSnapshot(name string, interval string, startTime int64, en
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -381,7 +381,7 @@ func (i *Info) UserFees(address string) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -396,7 +396,7 @@ func (i *Info) UserStakingSummary(address string) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -411,7 +411,7 @@ func (i *Info) UserStakingDelegations(address string) ([]map[string]any, error) 
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -426,7 +426,7 @@ func (i *Info) UserStakingRewards(address string) ([]map[string]any, error) {
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -441,7 +441,7 @@ func (i *Info) DelegatorHistory(user string) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -457,7 +457,7 @@ func (i *Info) QueryOrderByOid(user string, oid int) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -473,7 +473,7 @@ func (i *Info) QueryOrderByCloid(user string, cloid *types.Cloid) (map[string]an
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -488,7 +488,7 @@ func (i *Info) QueryReferralState(user string) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -503,7 +503,7 @@ func (i *Info) QuerySubAccounts(user string) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -518,7 +518,7 @@ func (i *Info) HistoricalOrders(user string) ([]map[string]any, error) {
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -538,7 +538,7 @@ func (i *Info) UserNonFundingLedgerUpdates(user string, startTime int64, endTime
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -553,7 +553,7 @@ func (i *Info) Portfolio(user string) (map[string]any, error) {
 	}
 
 	var result map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
@@ -568,7 +568,126 @@ func (i *Info) ExtraAgents(user string) ([]map[string]any, error) {
 	}
 
 	var result []map[string]any
-	if err := i.Post("/info", payload, &result); err != nil {
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// QueryUserToMultiSigSigners retrieves the multi-sig signers for a multi-sig user
+func (i *Info) QueryUserToMultiSigSigners(multiSigUser string) (map[string]any, error) {
+	payload := map[string]any{
+		"type": "userToMultiSigSigners",
+		"user": multiSigUser,
+	}
+
+	var result map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// QueryPerpDeployAuctionStatus retrieves the perp deploy auction status
+func (i *Info) QueryPerpDeployAuctionStatus() (map[string]any, error) {
+	payload := map[string]any{
+		"type": "perpDeployAuctionStatus",
+	}
+
+	var result map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// QueryUserDexAbstractionState retrieves the dex abstraction state for a user
+func (i *Info) QueryUserDexAbstractionState(user string) (map[string]any, error) {
+	payload := map[string]any{
+		"type": "userDexAbstraction",
+		"user": user,
+	}
+
+	var result map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// UserTwapSliceFills retrieves a user's TWAP slice fills (at most 2000 most recent)
+func (i *Info) UserTwapSliceFills(user string) ([]map[string]any, error) {
+	payload := map[string]any{
+		"type": "userTwapSliceFills",
+		"user": user,
+	}
+
+	var result []map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// UserVaultEquities retrieves user's equity positions across all vaults
+func (i *Info) UserVaultEquities(user string) (map[string]any, error) {
+	payload := map[string]any{
+		"type": "userVaultEquities",
+		"user": user,
+	}
+
+	var result map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// UserRole retrieves the role and account type information for a user
+func (i *Info) UserRole(user string) (map[string]any, error) {
+	payload := map[string]any{
+		"type": "userRole",
+		"user": user,
+	}
+
+	var result map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// UserRateLimit retrieves user's API rate limit configuration and usage
+func (i *Info) UserRateLimit(user string) (map[string]any, error) {
+	payload := map[string]any{
+		"type": "userRateLimit",
+		"user": user,
+	}
+
+	var result map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// QuerySpotDeployAuctionStatus retrieves the spot deploy auction status for a user
+func (i *Info) QuerySpotDeployAuctionStatus(user string) (map[string]any, error) {
+	payload := map[string]any{
+		"type": "spotDeployState",
+		"user": user,
+	}
+
+	var result map[string]any
+	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 

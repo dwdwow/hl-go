@@ -1,4 +1,60 @@
 // Package signing provides EIP-712 signing functionality for Hyperliquid API requests.
+//
+// This package implements the cryptographic signing required for all authenticated
+// operations on the Hyperliquid exchange, following the EIP-712 standard for typed
+// structured data hashing and signing.
+//
+// # Signing Methods
+//
+// There are two main categories of actions:
+//
+//  1. L1 Actions (signed with SignL1Action):
+//     - Order placement, modification, and cancellation
+//     - Leverage and margin updates
+//     - Account operations (sub-accounts, referrals, etc.)
+//     - Spot and Perp deployment
+//     - Validator operations
+//     Uses a "phantom agent" pattern where the action is hashed with msgpack,
+//     combined with nonce and vault address, then signed via EIP-712.
+//
+//  2. User-Signed Actions (signed with SignUserSignedAction):
+//     - USD and spot transfers
+//     - Withdrawals from bridge
+//     - Asset transfers between DEXs
+//     - Token delegation (staking)
+//     - Agent approval
+//     - Multi-sig operations
+//     Uses direct EIP-712 signing with specific type schemas for each action type.
+//
+// # Action Hash
+//
+// The ActionHash function computes a keccak256 hash of:
+//   - msgpack-encoded action
+//   - 8-byte nonce (big endian)
+//   - vault address (if present)
+//   - expires_after timestamp (if present)
+//
+// This hash is used as the connectionId in the phantom agent for L1 actions,
+// or directly as the multiSigActionHash for multi-sig envelopes.
+//
+// # EIP-712 Domains
+//
+// L1 actions use domain:
+//   - name: "Exchange"
+//   - version: "1"
+//   - chainId: 1337
+//
+// User-signed actions use domain:
+//   - name: "HyperliquidSignTransaction"
+//   - version: "1"
+//   - chainId: 0x66eee (421614)
+//
+// # Wire Format Conversion
+//
+// Float values must be converted to strings with proper precision:
+//   - Prices and sizes: 8 decimal places maximum
+//   - Values are normalized to remove trailing zeros
+//   - Prevents rounding errors during transmission
 package signing
 
 import (
@@ -6,6 +62,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -62,25 +119,30 @@ func ConstructPhantomAgent(hash []byte, isMainnet bool) map[string]any {
 		source = "a"
 	}
 
+	// Convert []byte to common.Hash for EIP-712 bytes32 encoding
+	// crypto.Keccak256 always returns 32 bytes, which matches common.Hash size
+	hash32 := common.BytesToHash(hash)
+
 	return map[string]any{
 		"source":       source,
-		"connectionId": hash,
+		"connectionId": hash32,
 	}
 }
 
 // L1Payload constructs the EIP-712 payload for L1 actions
 func L1Payload(phantomAgent map[string]any) apitypes.TypedData {
+	// Match Python SDK structure: Agent first, then EIP712Domain
 	return apitypes.TypedData{
 		Types: apitypes.Types{
+			"Agent": []apitypes.Type{
+				{Name: "source", Type: "string"},
+				{Name: "connectionId", Type: "bytes32"},
+			},
 			"EIP712Domain": []apitypes.Type{
 				{Name: "name", Type: "string"},
 				{Name: "version", Type: "string"},
 				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
-			},
-			"Agent": []apitypes.Type{
-				{Name: "source", Type: "string"},
-				{Name: "connectionId", Type: "bytes32"},
 			},
 		},
 		PrimaryType: "Agent",
@@ -90,16 +152,13 @@ func L1Payload(phantomAgent map[string]any) apitypes.TypedData {
 			ChainId:           (*math.HexOrDecimal256)(big.NewInt(1337)),
 			VerifyingContract: "0x0000000000000000000000000000000000000000",
 		},
-		Message: apitypes.TypedDataMessage{
-			"source":       phantomAgent["source"],
-			"connectionId": phantomAgent["connectionId"],
-		},
+		Message: apitypes.TypedDataMessage(phantomAgent),
 	}
 }
 
 // UserSignedPayload constructs the EIP-712 payload for user-signed actions
 func UserSignedPayload(action map[string]any, signatureTypes []apitypes.Type, primaryType string) apitypes.TypedData {
-	// Get chainId from action
+	// Get chainId from action (signatureChainId is used for domain but not in message)
 	chainIDHex, ok := action["signatureChainId"].(string)
 	if !ok {
 		chainIDHex = "0x66eee"
@@ -108,15 +167,47 @@ func UserSignedPayload(action map[string]any, signatureTypes []apitypes.Type, pr
 	chainID := new(big.Int)
 	chainID.SetString(chainIDHex[2:], 16)
 
+	// Build message with only fields defined in signatureTypes
+	// This excludes signatureChainId which is only used for domain
+	message := make(apitypes.TypedDataMessage)
+	for _, fieldType := range signatureTypes {
+		if value, ok := action[fieldType.Name]; ok {
+			// Convert to *big.Int for integer types (uint64, uint256, etc.)
+			if strings.HasPrefix(fieldType.Type, "uint") || strings.HasPrefix(fieldType.Type, "int") {
+				var bigIntVal *big.Int
+				switch v := value.(type) {
+				case int64:
+					bigIntVal = big.NewInt(v)
+				case uint64:
+					bigIntVal = new(big.Int).SetUint64(v)
+				case int:
+					bigIntVal = big.NewInt(int64(v))
+				case *big.Int:
+					bigIntVal = v
+				default:
+					bigIntVal = nil
+				}
+				if bigIntVal != nil {
+					message[fieldType.Name] = bigIntVal
+				} else {
+					message[fieldType.Name] = value
+				}
+			} else {
+				message[fieldType.Name] = value
+			}
+		}
+	}
+
+	// Match Python SDK structure: primary type first, then EIP712Domain
 	return apitypes.TypedData{
 		Types: apitypes.Types{
+			primaryType: signatureTypes,
 			"EIP712Domain": []apitypes.Type{
 				{Name: "name", Type: "string"},
 				{Name: "version", Type: "string"},
 				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
 			},
-			primaryType: signatureTypes,
 		},
 		PrimaryType: primaryType,
 		Domain: apitypes.TypedDataDomain{
@@ -125,7 +216,7 @@ func UserSignedPayload(action map[string]any, signatureTypes []apitypes.Type, pr
 			ChainId:           (*math.HexOrDecimal256)(chainID),
 			VerifyingContract: "0x0000000000000000000000000000000000000000",
 		},
-		Message: apitypes.TypedDataMessage(action),
+		Message: message,
 	}
 }
 
@@ -169,6 +260,48 @@ func SignUserSignedAction(
 	return signTypedData(privateKey, typedData)
 }
 
+// SignMultiSigAction signs a multi-sig action
+func SignMultiSigAction(
+	privateKey *ecdsa.PrivateKey,
+	action map[string]any,
+	isMainnet bool,
+	vaultAddress *string,
+	nonce int64,
+	expiresAfter *int64,
+) (*types.Signature, error) {
+	// Create a copy without the type field
+	actionWithoutTag := make(map[string]any)
+	for k, v := range action {
+		if k != "type" {
+			actionWithoutTag[k] = v
+		}
+	}
+
+	// Compute action hash
+	multiSigActionHashBytes, err := ActionHash(actionWithoutTag, vaultAddress, nonce, expiresAfter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute multi-sig action hash: %w", err)
+	}
+
+	// Convert []byte to common.Hash for EIP-712 bytes32 encoding
+	// crypto.Keccak256 always returns 32 bytes, which matches common.Hash size
+	multiSigActionHash := common.BytesToHash(multiSigActionHashBytes)
+
+	// Create envelope
+	envelope := map[string]any{
+		"multiSigActionHash": multiSigActionHash,
+		"nonce":              nonce,
+	}
+
+	return SignUserSignedAction(
+		privateKey,
+		envelope,
+		MultiSigEnvelopeSignTypes,
+		"HyperliquidTransaction:SendMultiSig",
+		isMainnet,
+	)
+}
+
 // signTypedData signs EIP-712 typed data
 func signTypedData(privateKey *ecdsa.PrivateKey, typedData apitypes.TypedData) (*types.Signature, error) {
 	// Compute the typed data hash
@@ -204,9 +337,21 @@ func signTypedData(privateKey *ecdsa.PrivateKey, typedData apitypes.TypedData) (
 		v += 27
 	}
 
+	// Format R and S as hex strings, removing leading zeros to match Python SDK
+	// Python SDK uses hex() which doesn't include leading zeros
+	formatHex := func(b []byte) string {
+		hexStr := common.Bytes2Hex(b)
+		// Remove leading zeros but keep at least one digit
+		trimmed := hexStr
+		for len(trimmed) > 1 && trimmed[0] == '0' {
+			trimmed = trimmed[1:]
+		}
+		return "0x" + trimmed
+	}
+
 	return &types.Signature{
-		R: "0x" + common.Bytes2Hex(r),
-		S: "0x" + common.Bytes2Hex(s),
+		R: formatHex(r),
+		S: formatHex(s),
 		V: v,
 	}, nil
 }
@@ -292,7 +437,7 @@ var (
 		{Name: "time", Type: "uint64"},
 	}
 
-	SpotTransferSignTypes = []apitypes.Type{
+	SpotSendSignTypes = []apitypes.Type{
 		{Name: "hyperliquidChain", Type: "string"},
 		{Name: "destination", Type: "string"},
 		{Name: "token", Type: "string"},
@@ -300,12 +445,16 @@ var (
 		{Name: "time", Type: "uint64"},
 	}
 
-	WithdrawSignTypes = []apitypes.Type{
+	SpotTransferSignTypes = SpotSendSignTypes // Alias for compatibility
+
+	Withdraw3SignTypes = []apitypes.Type{
 		{Name: "hyperliquidChain", Type: "string"},
 		{Name: "destination", Type: "string"},
 		{Name: "amount", Type: "string"},
 		{Name: "time", Type: "uint64"},
 	}
+
+	WithdrawSignTypes = Withdraw3SignTypes // Alias for compatibility
 
 	USDClassTransferSignTypes = []apitypes.Type{
 		{Name: "hyperliquidChain", Type: "string"},
@@ -314,10 +463,57 @@ var (
 		{Name: "nonce", Type: "uint64"},
 	}
 
-	AgentSignTypes = []apitypes.Type{
+	SendAssetSignTypes = []apitypes.Type{
+		{Name: "hyperliquidChain", Type: "string"},
+		{Name: "destination", Type: "string"},
+		{Name: "sourceDex", Type: "string"},
+		{Name: "destinationDex", Type: "string"},
+		{Name: "token", Type: "string"},
+		{Name: "amount", Type: "string"},
+		{Name: "fromSubAccount", Type: "string"},
+		{Name: "nonce", Type: "uint64"},
+	}
+
+	TokenDelegateSignTypes = []apitypes.Type{
+		{Name: "hyperliquidChain", Type: "string"},
+		{Name: "validator", Type: "address"},
+		{Name: "wei", Type: "uint64"},
+		{Name: "isUndelegate", Type: "bool"},
+		{Name: "nonce", Type: "uint64"},
+	}
+
+	ApproveAgentSignTypes = []apitypes.Type{
 		{Name: "hyperliquidChain", Type: "string"},
 		{Name: "agentAddress", Type: "address"},
 		{Name: "agentName", Type: "string"},
+		{Name: "nonce", Type: "uint64"},
+	}
+
+	AgentSignTypes = ApproveAgentSignTypes // Alias for compatibility
+
+	ApproveBuilderFeeSignTypes = []apitypes.Type{
+		{Name: "hyperliquidChain", Type: "string"},
+		{Name: "maxFeeRate", Type: "string"},
+		{Name: "builder", Type: "address"},
+		{Name: "nonce", Type: "uint64"},
+	}
+
+	UserDexAbstractionSignTypes = []apitypes.Type{
+		{Name: "hyperliquidChain", Type: "string"},
+		{Name: "user", Type: "address"},
+		{Name: "enabled", Type: "bool"},
+		{Name: "nonce", Type: "uint64"},
+	}
+
+	ConvertToMultiSigUserSignTypes = []apitypes.Type{
+		{Name: "hyperliquidChain", Type: "string"},
+		{Name: "signers", Type: "string"},
+		{Name: "nonce", Type: "uint64"},
+	}
+
+	MultiSigEnvelopeSignTypes = []apitypes.Type{
+		{Name: "hyperliquidChain", Type: "string"},
+		{Name: "multiSigActionHash", Type: "bytes32"},
 		{Name: "nonce", Type: "uint64"},
 	}
 )
