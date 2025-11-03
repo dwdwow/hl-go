@@ -51,6 +51,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -81,6 +82,7 @@ type Client[T any] struct {
 	conn         *websocket.Conn
 	subscription map[string]any
 	isConnected  bool
+	writeMu      sync.Mutex
 	ctx          context.Context
 	cancel       context.CancelFunc
 	pingInterval time.Duration
@@ -105,13 +107,17 @@ func newClient[T any](url string, subscription map[string]any) *Client[T] {
 		url:          url,
 		subscription: subscription,
 		isConnected:  false,
-		pingInterval: 50 * time.Second, // Default ping interval
+		pingInterval: 40 * time.Second, // Default ping interval
 	}
 }
 
 // subscriptionHandler converts the subscription into a list of subscription messages
 // If any field contains a slice, it will expand into multiple subscriptions
 func (c *Client[T]) subscriptionHandler() []map[string]any {
+	if len(c.subscription) == 0 {
+		return []map[string]any{}
+	}
+
 	// Check if any field is a slice
 	var sliceField string
 	var sliceValues []string
@@ -157,6 +163,15 @@ func (c *Client[T]) subscriptionHandler() []map[string]any {
 	return result
 }
 
+func (c *Client[T]) Write(msg any) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	if c.conn == nil {
+		return fmt.Errorf("client not connected")
+	}
+	return c.conn.WriteJSON(msg)
+}
+
 // start connects to the WebSocket and subscribes to the specified feed
 // It also starts a background goroutine to send ping messages periodically
 // Not thread-safe: should only be called from Read() once
@@ -185,9 +200,7 @@ func (c *Client[T]) start() error {
 	// Send subscription messages
 	subs := c.subscriptionHandler()
 	for _, sub := range subs {
-		s, _ := json.Marshal(sub)
-		fmt.Println(string(s))
-		if err = conn.WriteJSON(sub); err != nil {
+		if err = c.Write(sub); err != nil {
 			c.conn.Close()
 			c.isConnected = false
 			c.cancel()
@@ -255,11 +268,6 @@ func (c *Client[T]) Read() (data T, err error) {
 			continue
 		}
 
-		// Skip subscription response and pong messages
-		if msg.Channel == "subscriptionResponse" || msg.Channel == "pong" {
-			continue
-		}
-
 		// Unmarshal data to the specified type
 		if unmarshalErr := json.Unmarshal(msg.Data, &data); unmarshalErr != nil {
 			err = fmt.Errorf("failed to unmarshal data: %w", unmarshalErr)
@@ -287,7 +295,7 @@ func (c *Client[T]) Close() error {
 
 	if c.conn != nil {
 		err := c.conn.Close()
-		c.conn = nil
+		// c.conn = nil
 		c.isConnected = false
 		return err
 	}
