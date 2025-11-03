@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -23,12 +22,12 @@ type wsMessage struct {
 }
 
 // Client is a generic WebSocket client that subscribes to a single feed
+// Designed for single-threaded use: one goroutine calls Read() in a loop
 type Client[T any] struct {
 	url          string
 	conn         *websocket.Conn
 	subscription map[string]any
-	mu           sync.Mutex // Protects conn and isConnected
-	writeMu      sync.Mutex // Serializes WebSocket writes
+	// writeMu      sync.Mutex // Serializes WebSocket writes (for ping goroutine)
 	isConnected  bool
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -108,16 +107,9 @@ func (c *Client[T]) subscriptionHandler() []map[string]any {
 
 // start connects to the WebSocket and subscribes to the specified feed
 // It also starts a background goroutine to send ping messages periodically
-func (c *Client[T]) start() (err error) {
-	// must set here to avoid race condition with defer
-	defer func() {
-		if err != nil {
-			_ = c.Close()
-		}
-	}()
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// Not thread-safe: should only be called from Read() once
+func (c *Client[T]) start() error {
+	fmt.Println("[DEBUG] start() called")
 
 	if c.isConnected {
 		return fmt.Errorf("client already started")
@@ -131,40 +123,48 @@ func (c *Client[T]) start() (err error) {
 		HandshakeTimeout: 10 * time.Second,
 	}
 
+	fmt.Printf("[DEBUG] Dialing %s...\n", c.url)
 	conn, _, err := dialer.Dial(c.url, nil)
 	if err != nil {
 		c.cancel()
+		fmt.Printf("[DEBUG] Dial failed: %v\n", err)
 		return fmt.Errorf("failed to connect to websocket: %w", err)
 	}
+	fmt.Println("[DEBUG] Dial succeeded")
 
 	c.conn = conn
 	c.isConnected = true
 
 	// Read and ignore the "Websocket connection established." message
+	fmt.Println("[DEBUG] Reading initial message...")
 	_, msg, err := conn.ReadMessage()
 	if err != nil {
 		c.conn.Close()
 		c.isConnected = false
 		c.cancel()
+		fmt.Printf("[DEBUG] Failed to read initial message: %v\n", err)
 		return fmt.Errorf("failed to read initial message: %w", err)
 	}
+	fmt.Printf("[DEBUG] Initial message: %s\n", string(msg))
 
-	if string(msg) != "Websocket connection established." {
-		// If it's not the expected message, it's fine - we'll handle it in Read()
-		// Put it back somehow? Actually, gorilla doesn't support this, so we just continue
-	}
-
-	// Send subscription message
-	c.writeMu.Lock()
+	// Send subscription messages
 	subs := c.subscriptionHandler()
-	for _, sub := range subs {
+	fmt.Printf("[DEBUG] Sending %d subscription(s)\n", len(subs))
+	for i, sub := range subs {
+		s, _ := json.Marshal(sub)
+		fmt.Printf("[DEBUG] Subscription %d: %s\n", i, string(s))
 		if err = conn.WriteJSON(sub); err != nil {
+			c.conn.Close()
+			c.isConnected = false
+			c.cancel()
+			fmt.Printf("[DEBUG] WriteJSON failed: %v\n", err)
 			return fmt.Errorf("failed to send subscription: %w", err)
 		}
 	}
-	c.writeMu.Unlock()
+	fmt.Println("[DEBUG] All subscriptions sent")
 
 	// Start ping goroutine
+	fmt.Println("[DEBUG] Starting ping goroutine")
 	go c.pingRoutine()
 
 	return nil
@@ -173,49 +173,53 @@ func (c *Client[T]) start() (err error) {
 // Read blocks until data is received and returns the unmarshaled data
 // It automatically connects if not connected, and closes on error
 // It skips subscription response messages and only returns actual data
+// Not thread-safe: should only be called from a single goroutine
 func (c *Client[T]) Read() (data T, err error) {
+	fmt.Println("[DEBUG] Read() called")
+
 	// Use defer to automatically close on error
-	// Defer is safe because we never return with lock held
 	defer func() {
 		if err != nil {
+			fmt.Printf("[DEBUG] Read() error, closing: %v\n", err)
 			c.Close()
 		}
 	}()
 
-	// Check if we need to start
-	c.mu.Lock()
-	needStart := !c.isConnected || c.conn == nil
-	c.mu.Unlock()
-
-	// Auto-start if not connected (without holding lock)
-	if needStart {
+	// Auto-start if not connected
+	if !c.isConnected || c.conn == nil {
+		fmt.Println("[DEBUG] Not connected, calling start()")
 		if err = c.start(); err != nil {
+			fmt.Printf("[DEBUG] start() failed: %v\n", err)
 			return data, fmt.Errorf("failed to start client: %w", err)
 		}
+		fmt.Println("[DEBUG] start() succeeded")
 	}
 
-	// Get connection (lock is not held during actual reading)
-	c.mu.Lock()
 	conn := c.conn
-	connected := c.isConnected
-	c.mu.Unlock()
-
-	if conn == nil || !connected {
+	if conn == nil {
 		err = fmt.Errorf("client not connected")
+		fmt.Println("[DEBUG] conn is nil after start")
 		return
 	}
 
+	fmt.Println("[DEBUG] Entering read loop")
 	for {
-		// Read raw message (blocking, no lock held)
-		_, rawMsg, readErr := conn.ReadMessage()
+		// Read raw message (blocking)
+		fmt.Println("[DEBUG] Calling ReadMessage()...")
+		msgType, rawMsg, readErr := conn.ReadMessage()
 		if readErr != nil {
-			err = fmt.Errorf("failed to read message: %w", readErr)
+			err = readErr
+			fmt.Printf("[DEBUG] ReadMessage() error: %v\n", readErr)
 			return
 		}
+
+		// DEBUG: Print message type and first 100 chars
+		fmt.Printf("[DEBUG] msgType=%d, len=%d, msg=%s\n", msgType, len(rawMsg), string(rawMsg[:min(len(rawMsg), 100)]))
 
 		// Handle text messages like "Websocket connection established."
 		if len(rawMsg) > 0 && rawMsg[0] != '{' {
 			// Skip non-JSON messages
+			fmt.Println("[DEBUG] Skipping non-JSON message")
 			continue
 		}
 
@@ -223,11 +227,15 @@ func (c *Client[T]) Read() (data T, err error) {
 		var msg wsMessage
 		if unmarshalErr := json.Unmarshal(rawMsg, &msg); unmarshalErr != nil {
 			// If it's not a valid wsMessage, skip it
+			fmt.Printf("[DEBUG] Failed to unmarshal wsMessage: %v\n", unmarshalErr)
 			continue
 		}
 
+		fmt.Printf("[DEBUG] Parsed wsMessage: channel=%s\n", msg.Channel)
+
 		// Skip subscription response and pong messages
 		if msg.Channel == "subscriptionResponse" || msg.Channel == "pong" {
+			fmt.Printf("[DEBUG] Skipping %s message\n", msg.Channel)
 			continue
 		}
 
@@ -237,15 +245,22 @@ func (c *Client[T]) Read() (data T, err error) {
 			return
 		}
 
+		fmt.Println("[DEBUG] Successfully unmarshaled data, returning")
 		return data, nil
 	}
 }
 
-// Close closes the WebSocket connection and stops the ping goroutine
-func (c *Client[T]) Close() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// min helper for debug output
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
+// Close closes the WebSocket connection and stops the ping goroutine
+// Safe to call multiple times
+func (c *Client[T]) Close() error {
 	// Cancel context to stop ping goroutine
 	if c.cancel != nil {
 		c.cancel()
@@ -273,18 +288,14 @@ func (c *Client[T]) pingRoutine() {
 			// Context canceled - stop ping routine
 			return
 		case <-ticker.C:
-			// Check connection status
-			c.mu.Lock()
+			// Check connection status (no lock needed - single threaded use)
 			conn := c.conn
 			connected := c.isConnected
-			c.mu.Unlock()
 
 			if conn != nil && connected {
-				// Send ping with write lock
+				// Send ping with write lock (only lock needed for concurrent writes)
 				pingMsg := map[string]string{"method": "ping"}
-				c.writeMu.Lock()
 				err := conn.WriteJSON(pingMsg)
-				c.writeMu.Unlock()
 
 				if err != nil {
 					// Failed to send ping - connection likely broken
@@ -299,8 +310,9 @@ func (c *Client[T]) pingRoutine() {
 
 // NewTradesClient creates a client for subscribing to trades
 // Can subscribe to single or multiple coins:
-//   NewTradesClient("BTC")           // single coin
-//   NewTradesClient("BTC", "ETH")    // multiple coins
+//
+//	NewTradesClient("BTC")           // single coin
+//	NewTradesClient("BTC", "ETH")    // multiple coins
 func NewTradesClient(coins ...string) *Client[[]WsTrade] {
 	sub := map[string]any{
 		"type": "trades",
@@ -315,8 +327,9 @@ func NewTradesClient(coins ...string) *Client[[]WsTrade] {
 
 // NewL2BookClient creates a client for subscribing to order book updates
 // Can subscribe to single or multiple coins:
-//   NewL2BookClient("BTC")           // single coin
-//   NewL2BookClient("BTC", "ETH")    // multiple coins
+//
+//	NewL2BookClient("BTC")           // single coin
+//	NewL2BookClient("BTC", "ETH")    // multiple coins
 func NewL2BookClient(coins ...string) *Client[WsBook] {
 	sub := map[string]any{
 		"type": "l2Book",
@@ -355,8 +368,9 @@ func NewUserEventsClient(user string) *Client[WsUserEvent] {
 
 // NewCandleClient creates a client for subscribing to candle updates
 // Can subscribe to single or multiple coins:
-//   NewCandleClient("1m", "BTC")           // single coin
-//   NewCandleClient("1m", "BTC", "ETH")    // multiple coins
+//
+//	NewCandleClient("1m", "BTC")           // single coin
+//	NewCandleClient("1m", "BTC", "ETH")    // multiple coins
 func NewCandleClient(interval string, coins ...string) *Client[[]Candle] {
 	sub := map[string]any{
 		"type":     "candle",
@@ -379,8 +393,9 @@ func NewAllMidsClient() *Client[AllMids] {
 
 // NewBboClient creates a client for subscribing to best bid/offer updates
 // Can subscribe to single or multiple coins:
-//   NewBboClient("BTC")           // single coin
-//   NewBboClient("BTC", "ETH")    // multiple coins
+//
+//	NewBboClient("BTC")           // single coin
+//	NewBboClient("BTC", "ETH")    // multiple coins
 func NewBboClient(coins ...string) *Client[WsBbo] {
 	sub := map[string]any{
 		"type": "bbo",
@@ -403,8 +418,9 @@ func NewUserFundingsClient(user string) *Client[WsUserFundings] {
 
 // NewActiveAssetCtxClient creates a client for subscribing to active asset context
 // Can subscribe to single or multiple coins:
-//   NewActiveAssetCtxClient("BTC")           // single coin
-//   NewActiveAssetCtxClient("BTC", "ETH")    // multiple coins
+//
+//	NewActiveAssetCtxClient("BTC")           // single coin
+//	NewActiveAssetCtxClient("BTC", "ETH")    // multiple coins
 func NewActiveAssetCtxClient(coins ...string) *Client[any] {
 	sub := map[string]any{
 		"type": "activeAssetCtx",
