@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dwdwow/hl-go/constants"
+	"github.com/dwdwow/hl-go/ws"
 )
 
 // APIError represents an API error response
@@ -32,6 +33,7 @@ func (e *APIError) Error() string {
 type API struct {
 	BaseURL    string
 	HTTPClient *http.Client
+	WsClient   *ws.PostOnlyClient
 	timeout    time.Duration
 }
 
@@ -54,6 +56,19 @@ func NewAPI(baseURL string, timeout time.Duration) *API {
 		},
 		timeout: timeout,
 	}
+}
+
+func NewAPIUsingWs() (*API, error) {
+	w := ws.NewPostOnlyClient()
+	if err := w.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start WebSocket client: %w", err)
+	}
+	return &API{
+		BaseURL: constants.MainnetAPIURL,
+		HTTPClient: &http.Client{
+			Timeout: constants.DefaultTimeout * time.Second,
+		},
+	}, nil
 }
 
 type ExchangeResponse struct {
