@@ -42,8 +42,12 @@ type PostResponseContent struct {
 }
 
 type PostOnlyRespWaiter struct {
-	ID   int64
-	Chan chan<- *PostResponse
+	ID int64
+	ch chan *PostResponse
+}
+
+func (w *PostOnlyRespWaiter) Chan() <-chan *PostResponse {
+	return w.ch
 }
 
 type PostOnlyClient struct {
@@ -62,7 +66,7 @@ type PostOnlyClient struct {
 
 func NewPostOnlyClient() *PostOnlyClient {
 	return &PostOnlyClient{
-		url:          DefaultURL,
+		url:          MainnetWsURL,
 		pingInterval: 40 * time.Second, // Default ping interval
 	}
 }
@@ -88,8 +92,8 @@ func (c *PostOnlyClient) Request(magType PostRequestType, payload any) (waiter P
 		return
 	}
 	waiter = PostOnlyRespWaiter{
-		ID:   c.id,
-		Chan: make(chan *PostResponse, 1),
+		ID: c.id,
+		ch: make(chan *PostResponse, 1),
 	}
 	c.respWaitersMu.Lock()
 	c.respWaiters[c.id] = waiter
@@ -169,8 +173,8 @@ func (c *PostOnlyClient) Read() {
 		c.Close()
 		c.respWaitersMu.Lock()
 		for _, waiter := range c.respWaiters {
-			waiter.Chan <- &PostResponse{Err: fmt.Errorf("websocket closed")}
-			close(waiter.Chan)
+			waiter.ch <- &PostResponse{Err: fmt.Errorf("websocket closed")}
+			close(waiter.ch)
 		}
 		c.respWaiters = make(map[int64]PostOnlyRespWaiter)
 		c.respWaitersMu.Unlock()
@@ -218,8 +222,8 @@ func (c *PostOnlyClient) Read() {
 			resp.Err = fmt.Errorf("%v", string(resp.Data.Response.Payload))
 		}
 
-		waiter.Chan <- resp
+		waiter.ch <- resp
 
-		close(waiter.Chan)
+		close(waiter.ch)
 	}
 }

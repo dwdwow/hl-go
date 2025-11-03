@@ -13,7 +13,7 @@ const (
 )
 
 func getTestInfo(t *testing.T) *Info {
-	info, err := NewInfo(constants.MainnetAPIURL, 30*time.Second)
+	info, err := NewInfoUsingHTTP(constants.MainnetAPIURL, 30*time.Second)
 	if err != nil {
 		t.Fatalf("NewInfo() error = %v", err)
 	}

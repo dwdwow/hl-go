@@ -58,8 +58,8 @@ import (
 )
 
 const (
-	// DefaultURL is the default Hyperliquid WebSocket URL
-	DefaultURL = "wss://api.hyperliquid.xyz/ws"
+	// MainnetWsURL is the default Hyperliquid WebSocket URL
+	MainnetWsURL = "wss://api.hyperliquid.xyz/ws"
 )
 
 // wsMessage represents the raw WebSocket message structure
@@ -349,7 +349,7 @@ func NewTradesClient(coins ...string) *Client[[]WsTrade] {
 	} else {
 		sub["coin"] = coins
 	}
-	return newClient[[]WsTrade](DefaultURL, sub)
+	return newClient[[]WsTrade](MainnetWsURL, sub)
 }
 
 // NewL2BookClient creates a client for subscribing to order book updates
@@ -366,12 +366,12 @@ func NewL2BookClient(coins ...string) *Client[WsBook] {
 	} else {
 		sub["coin"] = coins
 	}
-	return newClient[WsBook](DefaultURL, sub)
+	return newClient[WsBook](MainnetWsURL, sub)
 }
 
 // NewUserFillsClient creates a client for subscribing to user fills
 func NewUserFillsClient(user string) *Client[WsUserFills] {
-	return newClient[WsUserFills](DefaultURL, map[string]any{
+	return newClient[WsUserFills](MainnetWsURL, map[string]any{
 		"type": "userFills",
 		"user": user,
 	})
@@ -379,7 +379,7 @@ func NewUserFillsClient(user string) *Client[WsUserFills] {
 
 // NewOrderUpdatesClient creates a client for subscribing to order updates
 func NewOrderUpdatesClient(user string) *Client[[]WsOrder] {
-	return newClient[[]WsOrder](DefaultURL, map[string]any{
+	return newClient[[]WsOrder](MainnetWsURL, map[string]any{
 		"type": "orderUpdates",
 		"user": user,
 	})
@@ -387,7 +387,7 @@ func NewOrderUpdatesClient(user string) *Client[[]WsOrder] {
 
 // NewUserEventsClient creates a client for subscribing to user events
 func NewUserEventsClient(user string) *Client[WsUserEvent] {
-	return newClient[WsUserEvent](DefaultURL, map[string]any{
+	return newClient[WsUserEvent](MainnetWsURL, map[string]any{
 		"type": "userEvents",
 		"user": user,
 	})
@@ -408,12 +408,12 @@ func NewCandleClient(interval string, coins ...string) *Client[[]Candle] {
 	} else {
 		sub["coin"] = coins
 	}
-	return newClient[[]Candle](DefaultURL, sub)
+	return newClient[[]Candle](MainnetWsURL, sub)
 }
 
 // NewAllMidsClient creates a client for subscribing to all mid prices
 func NewAllMidsClient() *Client[AllMids] {
-	return newClient[AllMids](DefaultURL, map[string]any{
+	return newClient[AllMids](MainnetWsURL, map[string]any{
 		"type": "allMids",
 	})
 }
@@ -432,12 +432,12 @@ func NewBboClient(coins ...string) *Client[WsBbo] {
 	} else {
 		sub["coin"] = coins
 	}
-	return newClient[WsBbo](DefaultURL, sub)
+	return newClient[WsBbo](MainnetWsURL, sub)
 }
 
 // NewUserFundingsClient creates a client for subscribing to user funding payments
 func NewUserFundingsClient(user string) *Client[WsUserFundings] {
-	return newClient[WsUserFundings](DefaultURL, map[string]any{
+	return newClient[WsUserFundings](MainnetWsURL, map[string]any{
 		"type": "userFundings",
 		"user": user,
 	})
@@ -457,12 +457,12 @@ func NewActiveAssetCtxClient(coins ...string) *Client[any] {
 	} else {
 		sub["coin"] = coins
 	}
-	return newClient[any](DefaultURL, sub)
+	return newClient[any](MainnetWsURL, sub)
 }
 
 // NewActiveAssetDataClient creates a client for subscribing to active asset data
 func NewActiveAssetDataClient(user string, coin string) *Client[WsActiveAssetData] {
-	return newClient[WsActiveAssetData](DefaultURL, map[string]any{
+	return newClient[WsActiveAssetData](MainnetWsURL, map[string]any{
 		"type": "activeAssetData",
 		"user": user,
 		"coin": coin,

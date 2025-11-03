@@ -109,6 +109,7 @@ type ExchangeOptions struct {
 	Timeout        time.Duration
 	VaultAddress   *string
 	AccountAddress *string
+	UseWs          bool
 }
 
 // NewExchange creates a new Exchange client
@@ -121,14 +122,20 @@ func NewExchange(
 	if options == nil {
 		options = &ExchangeOptions{}
 	}
-	if options.BaseURL == "" {
-		options.BaseURL = constants.MainnetAPIURL
-	}
 
+	var info *Info
+	var err error
 	// Create info client
-	info, err := NewInfo(options.BaseURL, options.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create info client: %w", err)
+	if options.UseWs {
+		info, err = NewInfoUsingWs(options.BaseURL, options.Timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create info client: %w", err)
+		}
+	} else {
+		info, err = NewInfoUsingHTTP(options.BaseURL, options.Timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create info client: %w", err)
+		}
 	}
 
 	// Get wallet address
@@ -140,7 +147,7 @@ func NewExchange(
 	walletAddress := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
 
 	return &Exchange{
-		API:            NewAPI(options.BaseURL, options.Timeout),
+		API:            info.API,
 		wallet:         options.Wallet,
 		walletAddress:  walletAddress,
 		vaultAddress:   options.VaultAddress,
@@ -149,7 +156,7 @@ func NewExchange(
 	}, nil
 }
 
-func NewExchangePrivateKeyFromTerminal(vaultAddress, accountAddress *string) (*Exchange, error) {
+func NewExchangeFromTerminal(vaultAddress, accountAddress *string) (*Exchange, error) {
 	wallet, _, err := evmutil.ReadEncryptedPrivateKeyFromTerminal()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key from terminal: %w", err)

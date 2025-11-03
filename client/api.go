@@ -37,10 +37,14 @@ type API struct {
 	timeout    time.Duration
 }
 
-// NewAPI creates a new API client
-// If baseURL is empty, it defaults to MainnetAPIURL
-// If timeout is 0, it defaults to DefaultTimeout
-func NewAPI(baseURL string, timeout time.Duration) *API {
+// // NewAPI creates a new API client
+// // If baseURL is empty, it defaults to MainnetAPIURL
+// // If timeout is 0, it defaults to DefaultTimeout
+// func NewAPI(baseURL string, timeout time.Duration) (*API, error) {
+
+// }
+
+func NewAPIUsingHTTP(baseURL string, timeout time.Duration) *API {
 	if baseURL == "" {
 		baseURL = constants.MainnetAPIURL
 	}
@@ -58,16 +62,25 @@ func NewAPI(baseURL string, timeout time.Duration) *API {
 	}
 }
 
-func NewAPIUsingWs() (*API, error) {
+func newAPIUsingWs(baseURL string, timeout time.Duration) (*API, error) {
+	if baseURL == "" {
+		baseURL = ws.MainnetWsURL
+	}
+	if timeout == 0 {
+		timeout = constants.DefaultTimeout * time.Second
+	}
 	w := ws.NewPostOnlyClient()
 	if err := w.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start WebSocket client: %w", err)
 	}
+	err := w.Start()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start WebSocket client: %w", err)
+	}
 	return &API{
-		BaseURL: constants.MainnetAPIURL,
-		HTTPClient: &http.Client{
-			Timeout: constants.DefaultTimeout * time.Second,
-		},
+		BaseURL:  baseURL,
+		WsClient: w,
+		timeout:  timeout,
 	}, nil
 }
 
@@ -77,6 +90,16 @@ type ExchangeResponse struct {
 }
 
 func (a *API) exchangePost(urlPath string, payload any, result any) error {
+	if a.HTTPClient != nil {
+		return a.exchangePostUsingHTTP(urlPath, payload, result)
+	}
+	if a.WsClient != nil {
+		return a.exchangePostUsingWs(payload, result)
+	}
+	return fmt.Errorf("no HTTP or WebSocket client available")
+}
+
+func (a *API) exchangePostUsingHTTP(urlPath string, payload any, result any) error {
 	// Marshal payload
 	var body []byte
 	var err error
@@ -143,7 +166,62 @@ func (a *API) exchangePost(urlPath string, payload any, result any) error {
 	return nil
 }
 
+func (a *API) exchangePostUsingWs(payload any, result any) error {
+	waiter, err := a.WsClient.Request(ws.PostRequestTypeAction, payload)
+	if err != nil {
+		return fmt.Errorf("failed to request: %w", err)
+	}
+
+	var respBody []byte
+
+	select {
+	case resp := <-waiter.Chan():
+		if resp.Err != nil {
+			return fmt.Errorf("failed to get response: %w", resp.Err)
+		}
+		respBody = resp.Data.Response.Payload
+	case <-time.After(a.timeout):
+		return fmt.Errorf("request timed out")
+	}
+
+	respData := &ExchangeResponse{}
+
+	if err := json.Unmarshal(respBody, respData); err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Check API status
+	if respData.Status != "ok" {
+		// Response is an error message string
+		var errMsg string
+		if err := json.Unmarshal(respData.Response, &errMsg); err != nil {
+			return fmt.Errorf("API error (status: %s): failed to parse error message", respData.Status)
+		}
+		return fmt.Errorf("API error: %s", errMsg)
+	}
+
+	// Parse response (status is "ok", response is data object)
+	if result != nil {
+		if err := json.Unmarshal(respData.Response, result); err != nil {
+			return fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return nil
+
+}
+
 func (a *API) infoPost(urlPath string, payload any, result any) error {
+	if a.HTTPClient != nil {
+		return a.infoPostUsingHTTP(urlPath, payload, result)
+	}
+	if a.WsClient != nil {
+		return a.infoPostUsingWs(payload, result)
+	}
+	return fmt.Errorf("no HTTP or WebSocket client available")
+}
+
+func (a *API) infoPostUsingHTTP(urlPath string, payload any, result any) error {
 	// Marshal payload
 	var body []byte
 	var err error
@@ -194,6 +272,34 @@ func (a *API) infoPost(urlPath string, payload any, result any) error {
 	return nil
 }
 
+func (a *API) infoPostUsingWs(payload any, result any) error {
+	waiter, err := a.WsClient.Request(ws.PostRequestTypeInfo, payload)
+	if err != nil {
+		return fmt.Errorf("failed to request: %w", err)
+	}
+
+	var respBody []byte
+
+	select {
+	case resp := <-waiter.Chan():
+		if resp.Err != nil {
+			return fmt.Errorf("failed to get response: %w", resp.Err)
+		}
+		respBody = resp.Data.Response.Payload
+	case <-time.After(a.timeout):
+		return fmt.Errorf("request timed out")
+	}
+
+	// Parse response
+	if result != nil {
+		if err := json.Unmarshal(respBody, result); err != nil {
+			return fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // handleError processes error responses
 func (a *API) handleError(statusCode int, body []byte) error {
 	apiErr := &APIError{
@@ -223,11 +329,13 @@ func (a *API) handleError(statusCode int, body []byte) error {
 
 // IsMainnet returns true if the client is configured for mainnet
 func (a *API) IsMainnet() bool {
-	return a.BaseURL == constants.MainnetAPIURL
+	return a.BaseURL == constants.MainnetAPIURL || a.BaseURL == ws.MainnetWsURL
 }
 
-// SetTimeout updates the HTTP client timeout
-func (a *API) SetTimeout(timeout time.Duration) {
+// SetHTTPTimeout updates the HTTP client timeout
+func (a *API) SetHTTPTimeout(timeout time.Duration) {
 	a.timeout = timeout
-	a.HTTPClient.Timeout = timeout
+	if a.HTTPClient != nil {
+		a.HTTPClient.Timeout = timeout
+	}
 }

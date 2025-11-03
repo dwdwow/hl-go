@@ -19,13 +19,29 @@ type Info struct {
 
 // NewInfo creates a new Info client
 // If skipWS is false, WebSocket connections will be initialized (not yet implemented)
-func NewInfo(baseURL string, timeout time.Duration) (*Info, error) {
-	if baseURL == "" {
-		baseURL = constants.MainnetAPIURL
+func NewInfoUsingHTTP(baseURL string, timeout time.Duration) (*Info, error) {
+	info := &Info{
+		API:               NewAPIUsingHTTP(baseURL, timeout),
+		coinToAsset:       make(map[string]int),
+		nameToCoin:        make(map[string]string),
+		assetToSzDecimals: make(map[int]int),
 	}
 
+	// Initialize metadata
+	if err := info.initializeMetadata(); err != nil {
+		return nil, fmt.Errorf("failed to initialize metadata: %w", err)
+	}
+
+	return info, nil
+}
+
+func NewInfoUsingWs(baseURL string, timeout time.Duration) (*Info, error) {
+	w, err := newAPIUsingWs(baseURL, timeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API: %w", err)
+	}
 	info := &Info{
-		API:               NewAPI(baseURL, timeout),
+		API:               w,
 		coinToAsset:       make(map[string]int),
 		nameToCoin:        make(map[string]string),
 		assetToSzDecimals: make(map[int]int),
