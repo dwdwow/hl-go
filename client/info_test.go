@@ -12,7 +12,7 @@ const (
 	testCoin    = "BTC"
 )
 
-func getTestInfo(t *testing.T) *Info {
+func getTestInfoUsingHTTP(t *testing.T) *Info {
 	info, err := NewInfoUsingHTTP(constants.MainnetAPIURL, 30*time.Second)
 	if err != nil {
 		t.Fatalf("NewInfo() error = %v", err)
@@ -20,8 +20,16 @@ func getTestInfo(t *testing.T) *Info {
 	return info
 }
 
+func getTestInfoUsingWs(t *testing.T) *Info {
+	info, err := NewInfoUsingWs("", 0)
+	if err != nil {
+		t.Fatalf("NewInfo() error = %v", err)
+	}
+	return info
+}
+
 func TestInfo_NameToCoin(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	coin, err := info.NameToCoin("HYPE")
 	if err != nil {
@@ -31,7 +39,7 @@ func TestInfo_NameToCoin(t *testing.T) {
 }
 
 func TestInfo_AllMids(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	mids, err := info.AllMids("")
 	if err != nil {
@@ -48,7 +56,7 @@ func TestInfo_AllMids(t *testing.T) {
 }
 
 func TestInfo_Meta(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingWs(t)
 
 	meta, err := info.Meta("")
 	if err != nil {
@@ -65,7 +73,7 @@ func TestInfo_Meta(t *testing.T) {
 }
 
 func TestInfo_SpotMeta(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	meta, err := info.SpotMeta()
 	if err != nil {
@@ -84,7 +92,7 @@ func TestInfo_SpotMeta(t *testing.T) {
 }
 
 func TestInfo_MetaAndAssetCtxs(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	result, err := info.MetaAndAssetCtxs()
 	if err != nil {
@@ -95,7 +103,7 @@ func TestInfo_MetaAndAssetCtxs(t *testing.T) {
 }
 
 func TestInfo_SpotMetaAndAssetCtxs(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	result, err := info.SpotMetaAndAssetCtxs()
 	if err != nil {
@@ -106,7 +114,7 @@ func TestInfo_SpotMetaAndAssetCtxs(t *testing.T) {
 }
 
 func TestInfo_UserState(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	state, err := info.UserState(testAddress, "")
 	if err != nil {
@@ -119,7 +127,7 @@ func TestInfo_UserState(t *testing.T) {
 }
 
 func TestInfo_OpenOrders(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	orders, err := info.OpenOrders(testAddress, "")
 	if err != nil {
@@ -136,7 +144,7 @@ func TestInfo_OpenOrders(t *testing.T) {
 }
 
 func TestInfo_FrontendOpenOrders(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	orders, err := info.FrontendOpenOrders(testAddress, "")
 	if err != nil {
@@ -147,7 +155,7 @@ func TestInfo_FrontendOpenOrders(t *testing.T) {
 }
 
 func TestInfo_UserFills(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	fills, err := info.UserFills(testAddress)
 	if err != nil {
@@ -164,7 +172,7 @@ func TestInfo_UserFills(t *testing.T) {
 }
 
 func TestInfo_UserFillsByTime(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	startTime := time.Now().Add(-24 * time.Hour).UnixMilli()
 	fills, err := info.UserFillsByTime(testAddress, startTime, nil, false)
@@ -176,7 +184,7 @@ func TestInfo_UserFillsByTime(t *testing.T) {
 }
 
 func TestInfo_L2Snapshot(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	l2, err := info.L2Snapshot(testCoin)
 	if err != nil {
@@ -196,7 +204,7 @@ func TestInfo_L2Snapshot(t *testing.T) {
 }
 
 func TestInfo_CandlesSnapshot(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	endTime := time.Now().UnixMilli()
 	startTime := endTime - 3600000 // 1小时前
@@ -216,7 +224,7 @@ func TestInfo_CandlesSnapshot(t *testing.T) {
 }
 
 func TestInfo_FundingHistory(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	endTime := time.Now().UnixMilli()
 	startTime := endTime - 24*3600000 // 24小时前
@@ -236,7 +244,7 @@ func TestInfo_FundingHistory(t *testing.T) {
 }
 
 func TestInfo_UserFundingHistory(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	endTime := time.Now().UnixMilli()
 	startTime := endTime - 24*3600000
@@ -250,7 +258,7 @@ func TestInfo_UserFundingHistory(t *testing.T) {
 }
 
 func TestInfo_UserFees(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	fees, err := info.UserFees(testAddress)
 	if err != nil {
@@ -261,7 +269,7 @@ func TestInfo_UserFees(t *testing.T) {
 }
 
 func TestInfo_UserStakingSummary(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	summary, err := info.UserStakingSummary(testAddress)
 	if err != nil {
@@ -272,7 +280,7 @@ func TestInfo_UserStakingSummary(t *testing.T) {
 }
 
 func TestInfo_UserStakingDelegations(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	delegations, err := info.UserStakingDelegations(testAddress)
 	if err != nil {
@@ -283,7 +291,7 @@ func TestInfo_UserStakingDelegations(t *testing.T) {
 }
 
 func TestInfo_UserStakingRewards(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	rewards, err := info.UserStakingRewards(testAddress)
 	if err != nil {
@@ -294,7 +302,7 @@ func TestInfo_UserStakingRewards(t *testing.T) {
 }
 
 func TestInfo_DelegatorHistory(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	history, err := info.DelegatorHistory(testAddress)
 	if err != nil {
@@ -305,7 +313,7 @@ func TestInfo_DelegatorHistory(t *testing.T) {
 }
 
 func TestInfo_QueryOrderByOid(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	result, err := info.QueryOrderByOid(testAddress, 12345)
 	if err != nil {
@@ -316,7 +324,7 @@ func TestInfo_QueryOrderByOid(t *testing.T) {
 }
 
 func TestInfo_QueryReferralState(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	state, err := info.QueryReferralState(testAddress)
 	if err != nil {
@@ -327,7 +335,7 @@ func TestInfo_QueryReferralState(t *testing.T) {
 }
 
 func TestInfo_QuerySubAccounts(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	subAccounts, err := info.QuerySubAccounts(testAddress)
 	if err != nil {
@@ -338,7 +346,7 @@ func TestInfo_QuerySubAccounts(t *testing.T) {
 }
 
 func TestInfo_HistoricalOrders(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	orders, err := info.HistoricalOrders(testAddress)
 	if err != nil {
@@ -349,7 +357,7 @@ func TestInfo_HistoricalOrders(t *testing.T) {
 }
 
 func TestInfo_UserNonFundingLedgerUpdates(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	endTime := time.Now().UnixMilli()
 	startTime := endTime - 24*3600000
@@ -363,7 +371,7 @@ func TestInfo_UserNonFundingLedgerUpdates(t *testing.T) {
 }
 
 func TestInfo_Portfolio(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	portfolio, err := info.Portfolio(testAddress)
 	if err != nil {
@@ -374,7 +382,7 @@ func TestInfo_Portfolio(t *testing.T) {
 }
 
 func TestInfo_ExtraAgents(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	agents, err := info.ExtraAgents(testAddress)
 	if err != nil {
@@ -385,7 +393,7 @@ func TestInfo_ExtraAgents(t *testing.T) {
 }
 
 func TestInfo_QueryUserToMultiSigSigners(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	signers, err := info.QueryUserToMultiSigSigners(testAddress)
 	if err != nil {
@@ -396,7 +404,7 @@ func TestInfo_QueryUserToMultiSigSigners(t *testing.T) {
 }
 
 func TestInfo_QueryPerpDeployAuctionStatus(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	status, err := info.QueryPerpDeployAuctionStatus()
 	if err != nil {
@@ -407,7 +415,7 @@ func TestInfo_QueryPerpDeployAuctionStatus(t *testing.T) {
 }
 
 func TestInfo_QueryUserDexAbstractionState(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	state, err := info.QueryUserDexAbstractionState(testAddress)
 	if err != nil {
@@ -418,7 +426,7 @@ func TestInfo_QueryUserDexAbstractionState(t *testing.T) {
 }
 
 func TestInfo_UserTwapSliceFills(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	fills, err := info.UserTwapSliceFills(testAddress)
 	if err != nil {
@@ -429,7 +437,7 @@ func TestInfo_UserTwapSliceFills(t *testing.T) {
 }
 
 func TestInfo_UserVaultEquities(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	equities, err := info.UserVaultEquities(testAddress)
 	if err != nil {
@@ -440,7 +448,7 @@ func TestInfo_UserVaultEquities(t *testing.T) {
 }
 
 func TestInfo_UserRole(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	role, err := info.UserRole(testAddress)
 	if err != nil {
@@ -451,7 +459,7 @@ func TestInfo_UserRole(t *testing.T) {
 }
 
 func TestInfo_UserRateLimit(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	rateLimit, err := info.UserRateLimit(testAddress)
 	if err != nil {
@@ -462,7 +470,7 @@ func TestInfo_UserRateLimit(t *testing.T) {
 }
 
 func TestInfo_QuerySpotDeployAuctionStatus(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	status, err := info.QuerySpotDeployAuctionStatus(testAddress)
 	if err != nil {
@@ -473,7 +481,7 @@ func TestInfo_QuerySpotDeployAuctionStatus(t *testing.T) {
 }
 
 func TestInfo_PerpDexs(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	dexs, err := info.PerpDexs()
 	if err != nil {
@@ -490,7 +498,7 @@ func TestInfo_PerpDexs(t *testing.T) {
 }
 
 func TestInfo_SpotUserState(t *testing.T) {
-	info := getTestInfo(t)
+	info := getTestInfoUsingHTTP(t)
 
 	state, err := info.SpotUserState(testAddress)
 	if err != nil {

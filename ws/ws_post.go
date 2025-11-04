@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dwdwow/hl-go/signing"
 	"github.com/gorilla/websocket"
 )
 
@@ -80,14 +81,14 @@ func (c *PostOnlyClient) Request(magType PostRequestType, payload any) (waiter P
 		return
 	}
 	c.id++
-	msg := map[string]any{
-		"method": "post",
-		"id":     c.id,
-		"request": map[string]any{
-			"type":    magType,
-			"payload": payload,
-		},
-	}
+	msg := signing.NewOrderedMap(
+		"method", "post",
+		"id", c.id,
+		"request", signing.NewOrderedMap(
+			"type", magType,
+			"payload", payload,
+		),
+	)
 	err = c.conn.WriteJSON(msg)
 	if err != nil {
 		return

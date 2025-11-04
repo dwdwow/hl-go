@@ -4,6 +4,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -168,17 +169,22 @@ func (a *API) exchangePostUsingWs(payload any, result any) error {
 		return fmt.Errorf("failed to request: %w", err)
 	}
 
-	var respBody []byte
+	var resp *ws.PostResponse
 
 	select {
-	case resp := <-waiter.Chan():
+	case resp = <-waiter.Chan():
 		if resp.Err != nil {
 			return fmt.Errorf("failed to get response: %w", resp.Err)
 		}
-		respBody = resp.Data.Response.Payload
 	case <-time.After(a.timeout):
 		return fmt.Errorf("request timed out")
 	}
+
+	if resp.Data.Response.Type == ws.PostResponseError {
+		return errors.New(string(resp.Data.Response.Payload))
+	}
+
+	respBody := resp.Data.Response.Payload
 
 	respData := &ExchangeResponse{}
 
@@ -268,27 +274,44 @@ func (a *API) infoPostUsingHTTP(urlPath string, payload any, result any) error {
 	return nil
 }
 
+type InfoRespPayload struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
 func (a *API) infoPostUsingWs(payload any, result any) error {
 	waiter, err := a.WsClient.Request(ws.PostRequestTypeInfo, payload)
 	if err != nil {
 		return fmt.Errorf("failed to request: %w", err)
 	}
 
-	var respBody []byte
+	var resp *ws.PostResponse
 
 	select {
-	case resp := <-waiter.Chan():
+	case resp = <-waiter.Chan():
 		if resp.Err != nil {
 			return fmt.Errorf("failed to get response: %w", resp.Err)
 		}
-		respBody = resp.Data.Response.Payload
 	case <-time.After(a.timeout):
 		return fmt.Errorf("request timed out")
 	}
 
+	if resp.Data.Response.Type == ws.PostResponseError {
+		return errors.New(string(resp.Data.Response.Payload))
+	}
+
+	respBody := resp.Data.Response.Payload
+
+	infoRespPayload := &InfoRespPayload{}
+	if err := json.Unmarshal(respBody, infoRespPayload); err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	data := infoRespPayload.Data
+
 	// Parse response
 	if result != nil {
-		if err := json.Unmarshal(respBody, result); err != nil {
+		if err := json.Unmarshal(data, result); err != nil {
 			return fmt.Errorf("failed to parse response: %w", err)
 		}
 	}

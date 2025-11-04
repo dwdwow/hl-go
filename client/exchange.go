@@ -157,7 +157,7 @@ func NewExchange(
 	}, nil
 }
 
-func NewExchangeFromTerminal(vaultAddress, accountAddress *string) (*Exchange, error) {
+func NewExchangeFromTerminal(vaultAddress, accountAddress *string, useWs bool) (*Exchange, error) {
 	wallet, _, err := evmutil.ReadEncryptedPrivateKeyFromTerminal()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key from terminal: %w", err)
@@ -166,6 +166,7 @@ func NewExchangeFromTerminal(vaultAddress, accountAddress *string) (*Exchange, e
 		Wallet:         wallet,
 		VaultAddress:   vaultAddress,
 		AccountAddress: accountAddress,
+		UseWs:          useWs,
 	}
 	return NewExchange(opts)
 }
