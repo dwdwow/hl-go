@@ -147,6 +147,17 @@ func (c *PostOnlyClient) pingRoutine() {
 	ticker := time.NewTicker(c.pingInterval)
 	defer ticker.Stop()
 
+	defer func() {
+		c.Close()
+		c.respWaitersMu.Lock()
+		for _, waiter := range c.respWaiters {
+			waiter.ch <- &PostResponse{Err: fmt.Errorf("websocket closed")}
+			close(waiter.ch)
+		}
+		c.respWaiters = make(map[int64]PostOnlyRespWaiter)
+		c.respWaitersMu.Unlock()
+	}()
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -171,16 +182,6 @@ func (c *PostOnlyClient) pingRoutine() {
 }
 
 func (c *PostOnlyClient) Read() {
-	defer func() {
-		c.Close()
-		c.respWaitersMu.Lock()
-		for _, waiter := range c.respWaiters {
-			waiter.ch <- &PostResponse{Err: fmt.Errorf("websocket closed")}
-			close(waiter.ch)
-		}
-		c.respWaiters = make(map[int64]PostOnlyRespWaiter)
-		c.respWaitersMu.Unlock()
-	}()
 	for {
 		if c.ctx.Err() != nil {
 			return
