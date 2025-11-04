@@ -73,10 +73,6 @@ func newAPIUsingWs(baseURL string, timeout time.Duration) (*API, error) {
 	if err := w.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start WebSocket client: %w", err)
 	}
-	err := w.Start()
-	if err != nil {
-		return nil, fmt.Errorf("failed to start WebSocket client: %w", err)
-	}
 	return &API{
 		BaseURL:  baseURL,
 		WsClient: w,

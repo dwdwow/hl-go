@@ -67,7 +67,8 @@ type PostOnlyClient struct {
 func NewPostOnlyClient() *PostOnlyClient {
 	return &PostOnlyClient{
 		url:          MainnetWsURL,
-		pingInterval: 40 * time.Second, // Default ping interval
+		pingInterval: 40 * time.Second,                   // Default ping interval
+		respWaiters:  make(map[int64]PostOnlyRespWaiter), // Initialize respWaiters to avoid nil map panic
 	}
 }
 
