@@ -129,3 +129,29 @@ func BytesToHex(b []byte) string {
 
 	return string(hex)
 }
+
+// NewOrderedMap creates a map with ordered keys to ensure msgpack encoding matches Python SDK
+// Python dict preserves insertion order (Python 3.7+), so we must insert keys in the same order.
+// This function ensures keys are inserted in the provided order, which is critical for msgpack
+// encoding consistency since msgpack encoding order depends on map iteration order.
+//
+// Usage:
+//
+//	action := NewOrderedMap("type", "order", "orders", orders, "grouping", "na")
+func NewOrderedMap(keyValuePairs ...any) map[string]any {
+	if len(keyValuePairs)%2 != 0 {
+		panic("NewOrderedMap: keyValuePairs must be even (key, value pairs)")
+	}
+	result := make(map[string]any, len(keyValuePairs)/2)
+	for i := 0; i < len(keyValuePairs); i += 2 {
+		key := keyValuePairs[i].(string)
+		value := keyValuePairs[i+1]
+		result[key] = value
+	}
+	return result
+}
+
+// newOrderedMap is an internal alias for backward compatibility
+func newOrderedMap(keyValuePairs ...any) map[string]any {
+	return NewOrderedMap(keyValuePairs...)
+}

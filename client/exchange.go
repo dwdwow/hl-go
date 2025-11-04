@@ -462,14 +462,14 @@ func (e *Exchange) BulkCancel(cancels []types.CancelRequest) (*types.CancelRespo
 		}
 
 		// Python SDK creates: {"a": asset, "o": oid} - ensure key order matches
-		cancelWires[i] = signing.NewOrderedMap(
+		cancelWires[i] = utils.NewOrderedMap(
 			"a", asset,
 			"o", cancel.Oid,
 		)
 	}
 
 	// Python SDK creates: {"type": "cancel", "cancels": cancel_wires} - ensure key order matches
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "cancel",
 		"cancels", cancelWires,
 	)
@@ -509,14 +509,14 @@ func (e *Exchange) BulkCancelByCloid(cancels []types.CancelByCloidRequest) (*typ
 		}
 
 		// Python SDK creates: {"asset": asset, "cloid": cloid.to_raw()} - ensure key order matches
-		cancelWires[i] = signing.NewOrderedMap(
+		cancelWires[i] = utils.NewOrderedMap(
 			"asset", asset,
 			"cloid", cancel.Cloid.ToRaw(),
 		)
 	}
 
 	// Python SDK creates: {"type": "cancelByCloid", "cancels": cancel_wires} - ensure key order matches
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "cancelByCloid",
 		"cancels", cancelWires,
 	)
@@ -553,7 +553,7 @@ func (e *Exchange) UpdateLeverage(leverage int, name string, isCross bool) (*typ
 	}
 
 	// Python SDK: {"type": "updateLeverage", "asset": ..., "isCross": ..., "leverage": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "updateLeverage",
 		"asset", asset,
 		"isCross", isCross,
@@ -585,7 +585,7 @@ func (e *Exchange) USDTransfer(amount float64, destination string) (*types.Defau
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"destination": ..., "amount": ..., "time": ..., "type": "usdSend"}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"destination", destination,
 		"amount", fmt.Sprintf("%f", amount),
 		"time", timestamp,
@@ -621,7 +621,7 @@ func (e *Exchange) USDClassTransfer(amount float64, toPerp bool) (*types.Default
 	}
 
 	// Python SDK: {"type": "usdClassTransfer", "amount": ..., "toPerp": ..., "nonce": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "usdClassTransfer",
 		"amount", amountStr,
 		"toPerp", toPerp,
@@ -652,7 +652,7 @@ func (e *Exchange) CreateSubAccount(name string) (*types.DefaultResponse, error)
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "createSubAccount", "name": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "createSubAccount",
 		"name", name,
 	)
@@ -682,7 +682,7 @@ func (e *Exchange) SetReferrer(code string) (*types.DefaultResponse, error) {
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "setReferrer", "code": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "setReferrer",
 		"code", code,
 	)
@@ -764,7 +764,7 @@ func (e *Exchange) BulkModifyOrders(modifies []types.ModifyRequest) (*types.Modi
 	}
 
 	// Python SDK: {"type": "batchModify", "modifies": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "batchModify",
 		"modifies", modifyWires,
 	)
@@ -794,7 +794,7 @@ func (e *Exchange) ScheduleCancel(time *int64) (*types.DefaultResponse, error) {
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "scheduleCancel"} or {"type": "scheduleCancel", "time": ...}
-	action := signing.NewOrderedMap("type", "scheduleCancel")
+	action := utils.NewOrderedMap("type", "scheduleCancel")
 	if time != nil {
 		action["time"] = *time
 	}
@@ -832,7 +832,7 @@ func (e *Exchange) UpdateIsolatedMargin(amount float64, name string) (*types.Def
 	ntli := int64(amount * 1e6)
 
 	// Python SDK: {"type": "updateIsolatedMargin", "asset": ..., "isBuy": ..., "ntli": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "updateIsolatedMargin",
 		"asset", asset,
 		"isBuy", true,
@@ -864,7 +864,7 @@ func (e *Exchange) SpotTransfer(amount float64, destination string, token string
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"destination": ..., "amount": ..., "token": ..., "time": ..., "type": "spotSend"}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"destination", destination,
 		"amount", fmt.Sprintf("%f", amount),
 		"token", token,
@@ -896,7 +896,7 @@ func (e *Exchange) WithdrawFromBridge(amount float64, destination string) (*type
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"destination": ..., "amount": ..., "time": ..., "type": "withdraw3"}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"destination", destination,
 		"amount", fmt.Sprintf("%f", amount),
 		"time", timestamp,
@@ -938,7 +938,7 @@ func (e *Exchange) SendAsset(
 	}
 
 	// Python SDK: {"type": "sendAsset", "destination": ..., "sourceDex": ..., "destinationDex": ..., "token": ..., "amount": ..., "fromSubAccount": ..., "nonce": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "sendAsset",
 		"destination", destination,
 		"sourceDex", sourceDex,
@@ -973,7 +973,7 @@ func (e *Exchange) SubAccountTransfer(subAccountUser string, isDeposit bool, usd
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "subAccountTransfer", "subAccountUser": ..., "isDeposit": ..., "usd": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "subAccountTransfer",
 		"subAccountUser", subAccountUser,
 		"isDeposit", isDeposit,
@@ -1005,7 +1005,7 @@ func (e *Exchange) SubAccountSpotTransfer(subAccountUser string, isDeposit bool,
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "subAccountSpotTransfer", "subAccountUser": ..., "isDeposit": ..., "token": ..., "amount": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "subAccountSpotTransfer",
 		"subAccountUser", subAccountUser,
 		"isDeposit", isDeposit,
@@ -1038,7 +1038,7 @@ func (e *Exchange) VaultTransfer(vaultAddress string, isDeposit bool, usd int) (
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "vaultTransfer", "vaultAddress": ..., "isDeposit": ..., "usd": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "vaultTransfer",
 		"vaultAddress", vaultAddress,
 		"isDeposit", isDeposit,
@@ -1070,7 +1070,7 @@ func (e *Exchange) TokenDelegate(validator string, wei int64, isUndelegate bool)
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"validator": ..., "wei": ..., "isUndelegate": ..., "nonce": ..., "type": "tokenDelegate"}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"validator", validator,
 		"wei", wei,
 		"isUndelegate", isUndelegate,
@@ -1102,7 +1102,7 @@ func (e *Exchange) ApproveAgent(agentAddress string, agentName *string) (*types.
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "approveAgent", "agentAddress": ..., "agentName": ... (optional), "nonce": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "approveAgent",
 		"agentAddress", agentAddress,
 		"nonce", timestamp,
@@ -1135,7 +1135,7 @@ func (e *Exchange) ApproveBuilderFee(builder string, maxFeeRate string) (*types.
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"maxFeeRate": ..., "builder": ..., "nonce": ..., "type": "approveBuilderFee"}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"maxFeeRate", maxFeeRate,
 		"builder", builder,
 		"nonce", timestamp,
@@ -1164,7 +1164,7 @@ func (e *Exchange) ApproveBuilderFee(builder string, maxFeeRate string) (*types.
 // Noop does nothing but marks the nonce as used (useful for canceling in-flight orders)
 func (e *Exchange) Noop(nonce int64) (*types.DefaultResponse, error) {
 	// Python SDK: {"type": "noop"}
-	action := signing.NewOrderedMap("type", "noop")
+	action := utils.NewOrderedMap("type", "noop")
 
 	signature, err := signing.SignL1Action(
 		e.wallet,
@@ -1191,7 +1191,7 @@ func (e *Exchange) UserDexAbstraction(user string, enabled bool) (*types.Default
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "userDexAbstraction", "user": ..., "enabled": ..., "nonce": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "userDexAbstraction",
 		"user", strings.ToLower(user),
 		"enabled", enabled,
@@ -1222,7 +1222,7 @@ func (e *Exchange) AgentEnableDexAbstraction() (*types.DefaultResponse, error) {
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "agentEnableDexAbstraction"}
-	action := signing.NewOrderedMap("type", "agentEnableDexAbstraction")
+	action := utils.NewOrderedMap("type", "agentEnableDexAbstraction")
 
 	signature, err := signing.SignL1Action(
 		e.wallet,
@@ -1261,9 +1261,9 @@ func (e *Exchange) TWAPOrder(
 	}
 
 	// Python SDK: {"type": "twapOrder", "twap": {"a": ..., "b": ..., "s": ..., "r": ..., "m": ..., "t": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "twapOrder",
-		"twap", signing.NewOrderedMap(
+		"twap", utils.NewOrderedMap(
 			"a", asset,
 			"b", isBuy,
 			"s", fmt.Sprintf("%f", sz),
@@ -1303,7 +1303,7 @@ func (e *Exchange) TWAPCancel(name string, twapID int) (*types.TWAPCancelRespons
 	}
 
 	// Python SDK: {"type": "twapCancel", "a": ..., "t": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "twapCancel",
 		"a", asset,
 		"t", twapID,
@@ -1334,7 +1334,7 @@ func (e *Exchange) UseBigBlocks(enable bool) (*types.DefaultResponse, error) {
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "evmUserModify", "usingBigBlocks": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "evmUserModify",
 		"usingBigBlocks", enable,
 	)
@@ -1378,7 +1378,7 @@ func (e *Exchange) ConvertToMultiSigUser(authorizedUsers []string, threshold int
 	signersJSON := fmt.Sprintf(`{"authorizedUsers":["%s"],"threshold":%d}`, strings.Join(sortedUsers, `","`), threshold)
 
 	// Python SDK: {"type": "convertToMultiSigUser", "signers": ..., "nonce": ...}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "convertToMultiSigUser",
 		"signers", signersJSON,
 		"nonce", timestamp,
@@ -1414,10 +1414,10 @@ func (e *Exchange) SpotDeployRegisterToken(
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "spotDeploy", "registerToken2": {"spec": {"name": ..., "szDecimals": ..., "weiDecimals": ...}, "maxGas": ..., "fullName": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
-		"registerToken2", signing.NewOrderedMap(
-			"spec", signing.NewOrderedMap(
+		"registerToken2", utils.NewOrderedMap(
+			"spec", utils.NewOrderedMap(
 				"name", tokenName,
 				"szDecimals", szDecimals,
 				"weiDecimals", weiDecimals,
@@ -1472,9 +1472,9 @@ func (e *Exchange) SpotDeployUserGenesis(
 	}
 
 	// Python SDK: {"type": "spotDeploy", "userGenesis": {"token": ..., "userAndWei": ..., "existingTokenAndWei": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
-		"userGenesis", signing.NewOrderedMap(
+		"userGenesis", utils.NewOrderedMap(
 			"token", token,
 			"userAndWei", userWeiList,
 			"existingTokenAndWei", existingList,
@@ -1511,9 +1511,9 @@ func (e *Exchange) SpotDeployFreezeUser(token int, user string, freeze bool) (*t
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "spotDeploy", "freezeUser": {"token": ..., "user": ..., "freeze": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
-		"freezeUser", signing.NewOrderedMap(
+		"freezeUser", utils.NewOrderedMap(
 			"token", token,
 			"user", strings.ToLower(user),
 			"freeze", freeze,
@@ -1555,9 +1555,9 @@ func (e *Exchange) spotDeployTokenActionInner(variant string, token int) (*types
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "spotDeploy", variant: {"token": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
-		variant, signing.NewOrderedMap("token", token),
+		variant, utils.NewOrderedMap("token", token),
 	)
 
 	signature, err := signing.SignL1Action(
@@ -1585,12 +1585,12 @@ func (e *Exchange) SpotDeployGenesis(token int, maxSupply string, noHyperliquidi
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "spotDeploy", "genesis": {"token": ..., "maxSupply": ..., "noHyperliquidity": ... (optional)}}
-	genesis := signing.NewOrderedMap("token", token, "maxSupply", maxSupply)
+	genesis := utils.NewOrderedMap("token", token, "maxSupply", maxSupply)
 	if noHyperliquidity {
 		genesis["noHyperliquidity"] = true
 	}
 
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
 		"genesis", genesis,
 	)
@@ -1620,9 +1620,9 @@ func (e *Exchange) SpotDeployRegisterSpot(baseToken int, quoteToken int) (*types
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "spotDeploy", "registerSpot": {"tokens": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
-		"registerSpot", signing.NewOrderedMap("tokens", []int{baseToken, quoteToken}),
+		"registerSpot", utils.NewOrderedMap("tokens", []int{baseToken, quoteToken}),
 	)
 
 	signature, err := signing.SignL1Action(
@@ -1656,7 +1656,7 @@ func (e *Exchange) SpotDeployRegisterHyperliquidity(
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "spotDeploy", "registerHyperliquidity": {"spot": ..., "startPx": ..., "orderSz": ..., "nOrders": ..., "nSeededLevels": ... (optional)}}
-	registerHL := signing.NewOrderedMap(
+	registerHL := utils.NewOrderedMap(
 		"spot", spot,
 		"startPx", fmt.Sprintf("%f", startPx),
 		"orderSz", fmt.Sprintf("%f", orderSz),
@@ -1666,7 +1666,7 @@ func (e *Exchange) SpotDeployRegisterHyperliquidity(
 		registerHL["nSeededLevels"] = *nSeededLevels
 	}
 
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
 		"registerHyperliquidity", registerHL,
 	)
@@ -1696,9 +1696,9 @@ func (e *Exchange) SpotDeploySetDeployerTradingFeeShare(token int, share string)
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "spotDeploy", "setDeployerTradingFeeShare": {"token": ..., "share": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "spotDeploy",
-		"setDeployerTradingFeeShare", signing.NewOrderedMap("token", token, "share", share),
+		"setDeployerTradingFeeShare", utils.NewOrderedMap("token", token, "share", share),
 	)
 
 	signature, err := signing.SignL1Action(
@@ -1745,7 +1745,7 @@ func (e *Exchange) PerpDeployRegisterAsset(
 			oracleUpdater = strings.ToLower(*schema.OracleUpdater)
 		}
 		// Python SDK: {"fullName": ..., "collateralToken": ..., "oracleUpdater": ...}
-		schemaWire = signing.NewOrderedMap(
+		schemaWire = utils.NewOrderedMap(
 			"fullName", schema.FullName,
 			"collateralToken", schema.CollateralToken,
 			"oracleUpdater", oracleUpdater,
@@ -1753,11 +1753,11 @@ func (e *Exchange) PerpDeployRegisterAsset(
 	}
 
 	// Python SDK: {"type": "perpDeploy", "registerAsset": {"maxGas": ..., "assetRequest": {...}, "dex": ..., "schema": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "perpDeploy",
-		"registerAsset", signing.NewOrderedMap(
+		"registerAsset", utils.NewOrderedMap(
 			"maxGas", maxGas,
-			"assetRequest", signing.NewOrderedMap(
+			"assetRequest", utils.NewOrderedMap(
 				"coin", coin,
 				"szDecimals", szDecimals,
 				"oraclePx", oraclePx,
@@ -1831,9 +1831,9 @@ func (e *Exchange) PerpDeploySetOracle(
 	})
 
 	// Python SDK: {"type": "perpDeploy", "setOracle": {"dex": ..., "oraclePxs": ..., "markPxs": ..., "externalPerpPxs": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "perpDeploy",
-		"setOracle", signing.NewOrderedMap(
+		"setOracle", utils.NewOrderedMap(
 			"dex", dex,
 			"oraclePxs", oraclePxsWire,
 			"markPxs", markPxsWire,
@@ -1876,7 +1876,7 @@ func (e *Exchange) cSignerInner(variant string) (*types.DefaultResponse, error) 
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "CSignerAction", variant: None}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "CSignerAction",
 		variant, nil,
 	)
@@ -1915,11 +1915,11 @@ func (e *Exchange) CValidatorRegister(
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "CValidatorAction", "register": {"profile": {...}, "unjailed": ..., "initial_wei": ...}}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "CValidatorAction",
-		"register", signing.NewOrderedMap(
-			"profile", signing.NewOrderedMap(
-				"node_ip", signing.NewOrderedMap("Ip", nodeIP),
+		"register", utils.NewOrderedMap(
+			"profile", utils.NewOrderedMap(
+				"node_ip", utils.NewOrderedMap("Ip", nodeIP),
 				"name", name,
 				"description", description,
 				"delegations_disabled", delegationsDisabled,
@@ -1967,7 +1967,7 @@ func (e *Exchange) CValidatorChangeProfile(
 	// Build profile with fields in Python SDK order: node_ip, name, description, unjailed, disable_delegations, commission_bps, signer
 	var nodeIPValue any
 	if nodeIP != nil {
-		nodeIPValue = signing.NewOrderedMap("Ip", *nodeIP)
+		nodeIPValue = utils.NewOrderedMap("Ip", *nodeIP)
 	} else {
 		nodeIPValue = nil
 	}
@@ -2007,7 +2007,7 @@ func (e *Exchange) CValidatorChangeProfile(
 		signerValue = nil
 	}
 
-	profile := signing.NewOrderedMap(
+	profile := utils.NewOrderedMap(
 		"node_ip", nodeIPValue,
 		"name", nameValue,
 		"description", descriptionValue,
@@ -2017,7 +2017,7 @@ func (e *Exchange) CValidatorChangeProfile(
 		"signer", signerValue,
 	)
 
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "CValidatorAction",
 		"changeProfile", profile,
 	)
@@ -2047,7 +2047,7 @@ func (e *Exchange) CValidatorUnregister() (*types.DefaultResponse, error) {
 	timestamp := utils.GetTimestampMs()
 
 	// Python SDK: {"type": "CValidatorAction", "unregister": None}
-	action := signing.NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "CValidatorAction",
 		"unregister", nil,
 	)
@@ -2081,11 +2081,11 @@ func (e *Exchange) MultiSig(
 	vaultAddress *string,
 ) (*types.DefaultResponse, error) {
 	// Python SDK: {"type": "multiSig", "signatureChainId": ..., "signatures": ..., "payload": {"multiSigUser": ..., "outerSigner": ..., "action": ...}}
-	multiSigAction := signing.NewOrderedMap(
+	multiSigAction := utils.NewOrderedMap(
 		"type", "multiSig",
 		"signatureChainId", "0x66eee",
 		"signatures", signatures,
-		"payload", signing.NewOrderedMap(
+		"payload", utils.NewOrderedMap(
 			"multiSigUser", strings.ToLower(multiSigUser),
 			"outerSigner", strings.ToLower(e.walletAddress),
 			"action", innerAction,

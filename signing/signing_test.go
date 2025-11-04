@@ -72,7 +72,7 @@ func TestL1ActionSigningMatches(t *testing.T) {
 
 	// Python msgpack encodes positive integers as uint64, so convert to match
 	// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
-	action := NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "dummy",
 		"num", uint64(num),
 	)
@@ -235,7 +235,7 @@ func TestL1ActionSigningMatchesWithVault(t *testing.T) {
 
 	// Python msgpack encodes positive integers as uint64, so convert to match
 	// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
-	action := NewOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "dummy",
 		"num", uint64(num),
 	)

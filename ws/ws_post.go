@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dwdwow/hl-go/signing"
+	"github.com/dwdwow/hl-go/utils"
 	"github.com/gorilla/websocket"
 )
 
@@ -81,10 +81,10 @@ func (c *PostOnlyClient) Request(magType PostRequestType, payload any) (waiter P
 		return
 	}
 	c.id++
-	msg := signing.NewOrderedMap(
+	msg := utils.NewOrderedMap(
 		"method", "post",
 		"id", c.id,
-		"request", signing.NewOrderedMap(
+		"request", utils.NewOrderedMap(
 			"type", magType,
 			"payload", payload,
 		),

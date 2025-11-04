@@ -126,7 +126,7 @@ func ConstructPhantomAgent(hash []byte, isMainnet bool) map[string]any {
 	hash32 := common.BytesToHash(hash)
 
 	// Ensure keys are in the same order as Python SDK: source first, then connectionId
-	return newOrderedMap(
+	return utils.NewOrderedMap(
 		"source", source,
 		"connectionId", hash32,
 	)
@@ -310,7 +310,7 @@ func SignMultiSigAction(
 
 	// Create envelope - Python SDK creates: {"multiSigActionHash": ..., "nonce": ...}
 	// Ensure keys are in the same order as Python SDK
-	envelope := newOrderedMap(
+	envelope := utils.NewOrderedMap(
 		"multiSigActionHash", multiSigActionHash,
 		"nonce", nonce,
 	)
@@ -435,39 +435,13 @@ func OrderRequestToOrderWire(order types.OrderRequest, asset int) (types.OrderWi
 	return wire, nil
 }
 
-// NewOrderedMap creates a map with ordered keys to ensure msgpack encoding matches Python SDK
-// Python dict preserves insertion order (Python 3.7+), so we must insert keys in the same order.
-// This function ensures keys are inserted in the provided order, which is critical for msgpack
-// encoding consistency since msgpack encoding order depends on map iteration order.
-//
-// Usage:
-//
-//	action := NewOrderedMap("type", "order", "orders", orders, "grouping", "na")
-func NewOrderedMap(keyValuePairs ...any) map[string]any {
-	if len(keyValuePairs)%2 != 0 {
-		panic("NewOrderedMap: keyValuePairs must be even (key, value pairs)")
-	}
-	result := make(map[string]any, len(keyValuePairs)/2)
-	for i := 0; i < len(keyValuePairs); i += 2 {
-		key := keyValuePairs[i].(string)
-		value := keyValuePairs[i+1]
-		result[key] = value
-	}
-	return result
-}
-
-// newOrderedMap is an internal alias for backward compatibility
-func newOrderedMap(keyValuePairs ...any) map[string]any {
-	return NewOrderedMap(keyValuePairs...)
-}
-
 // OrderWiresToOrderAction creates an order action from order wires
 // Must match Python SDK's order_wires_to_order_action which creates:
 // {"type": "order", "orders": order_wires, "grouping": "na"} (with optional "builder")
 func OrderWiresToOrderAction(orderWires []types.OrderWire, builder *types.BuilderInfo) map[string]any {
 	// Create action with keys in the exact order as Python SDK
 	// Python: action = {"type": "order", "orders": order_wires, "grouping": "na"}
-	action := newOrderedMap(
+	action := utils.NewOrderedMap(
 		"type", "order",
 		"orders", orderWires,
 		"grouping", "na",

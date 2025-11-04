@@ -65,7 +65,7 @@ func TestActionHashExactMatch(t *testing.T) {
 	t.Run("SimpleAction", func(t *testing.T) {
 		num, _ := utils.FloatToIntForHashing(1000)
 		// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
-		action := NewOrderedMap(
+		action := utils.NewOrderedMap(
 			"type", "dummy",
 			"num", uint64(num),
 		)
@@ -107,7 +107,7 @@ func TestActionHashExactMatch(t *testing.T) {
 	t.Run("UsingActionHashFunction", func(t *testing.T) {
 		num, _ := utils.FloatToIntForHashing(1000)
 		// Python creates: {"type": "dummy", "num": ...} - ensure key order matches
-		action := NewOrderedMap(
+		action := utils.NewOrderedMap(
 			"type", "dummy",
 			"num", uint64(num),
 		)
