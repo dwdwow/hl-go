@@ -131,7 +131,7 @@ type ModifyWire struct {
 // CancelRequest represents a request to cancel an order
 type CancelRequest struct {
 	Coin string `json:"coin"`
-	Oid  int    `json:"oid"`
+	Oid  int64    `json:"oid"`
 }
 
 // CancelByCloidRequest represents a request to cancel by client order ID
@@ -203,7 +203,7 @@ type SpotMetaAndAssetCtxs struct {
 // BuilderInfo represents builder fee information
 type BuilderInfo struct {
 	B string `json:"b"` // builder address
-	F int    `json:"f"` // fee in tenths of basis points
+	F int64    `json:"f"` // fee in tenths of basis points
 }
 
 // Signature represents an ECDSA signature
@@ -216,7 +216,7 @@ type Signature struct {
 // Leverage represents position leverage
 type Leverage struct {
 	Type   string  `json:"type"` // "cross" or "isolated"
-	Value  int     `json:"value"`
+	Value  int64     `json:"value"`
 	RawUsd *string `json:"rawUsd,omitempty"` // only for isolated
 }
 
@@ -259,7 +259,7 @@ type UserState struct {
 type OpenOrder struct {
 	Coin      string `json:"coin"`
 	LimitPx   string `json:"limitPx"`
-	Oid       int    `json:"oid"`
+	Oid       int64    `json:"oid"`
 	Side      Side   `json:"side"`
 	Sz        string `json:"sz"`
 	Timestamp int64  `json:"timestamp"`
@@ -276,10 +276,10 @@ type Fill struct {
 	Dir           string `json:"dir"`
 	ClosedPnl     string `json:"closedPnl"`
 	Hash          string `json:"hash"`
-	Oid           int    `json:"oid"`
+	Oid           int64    `json:"oid"`
 	Crossed       bool   `json:"crossed"`
 	Fee           string `json:"fee"`
-	Tid           int    `json:"tid"`
+	Tid           int64    `json:"tid"`
 	FeeToken      string `json:"feeToken"`
 }
 
@@ -287,7 +287,7 @@ type Fill struct {
 type L2Level struct {
 	Px string `json:"px"`
 	Sz string `json:"sz"`
-	N  int    `json:"n"`
+	N  int64    `json:"n"`
 }
 
 // L2BookData represents L2 order book data
