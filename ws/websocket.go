@@ -267,7 +267,12 @@ func (c *Client[T]) Read() (data T, err error) {
 			// If it's not a valid wsMessage, skip it
 			continue
 		}
-
+		
+		if len(msg.Data) >= 20 &&
+			string(msg.Data[:20]) == `{"method":"subscribe` {
+			continue
+		}
+		
 		// Unmarshal data to the specified type
 		if unmarshalErr := json.Unmarshal(msg.Data, &data); unmarshalErr != nil {
 			err = fmt.Errorf("failed to unmarshal data: %w", unmarshalErr)
