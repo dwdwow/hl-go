@@ -203,7 +203,7 @@ type SpotMetaAndAssetCtxs struct {
 // BuilderInfo represents builder fee information
 type BuilderInfo struct {
 	B string `json:"b"` // builder address
-	F int64    `json:"f"` // fee in tenths of basis points
+	F int    `json:"f"` // fee in tenths of basis points
 }
 
 // Signature represents an ECDSA signature
@@ -216,7 +216,7 @@ type Signature struct {
 // Leverage represents position leverage
 type Leverage struct {
 	Type   string  `json:"type"` // "cross" or "isolated"
-	Value  int64     `json:"value"`
+	Value  int     `json:"value"`
 	RawUsd *string `json:"rawUsd,omitempty"` // only for isolated
 }
 
@@ -279,7 +279,7 @@ type Fill struct {
 	Oid           int    `json:"oid"`
 	Crossed       bool   `json:"crossed"`
 	Fee           string `json:"fee"`
-	Tid           int64    `json:"tid"`
+	Tid           int    `json:"tid"`
 	FeeToken      string `json:"feeToken"`
 }
 
@@ -287,7 +287,7 @@ type Fill struct {
 type L2Level struct {
 	Px string `json:"px"`
 	Sz string `json:"sz"`
-	N  int64    `json:"n"`
+	N  int    `json:"n"`
 }
 
 // L2BookData represents L2 order book data
