@@ -413,14 +413,14 @@ type OrderStatus struct {
 
 // RestingOrder represents an order that is resting on the book
 type RestingOrder struct {
-	Oid int `json:"oid"` // Order ID
+	Oid int64 `json:"oid"` // Order ID
 }
 
 // FilledOrder represents a filled order
 type FilledOrder struct {
 	TotalSz string `json:"totalSz,omitempty"`
 	AvgPx   string `json:"avgPx,omitempty"`
-	Oid     int    `json:"oid,omitempty"`
+	Oid     int64    `json:"oid,omitempty"`
 }
 
 // CancelResponse represents the response from order cancellation
