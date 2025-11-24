@@ -131,7 +131,7 @@ type ModifyWire struct {
 // CancelRequest represents a request to cancel an order
 type CancelRequest struct {
 	Coin string `json:"coin"`
-	Oid  int64    `json:"oid"`
+	Oid  int    `json:"oid"`
 }
 
 // CancelByCloidRequest represents a request to cancel by client order ID
@@ -259,7 +259,7 @@ type UserState struct {
 type OpenOrder struct {
 	Coin      string `json:"coin"`
 	LimitPx   string `json:"limitPx"`
-	Oid       int64    `json:"oid"`
+	Oid       int    `json:"oid"`
 	Side      Side   `json:"side"`
 	Sz        string `json:"sz"`
 	Timestamp int64  `json:"timestamp"`
@@ -276,7 +276,7 @@ type Fill struct {
 	Dir           string `json:"dir"`
 	ClosedPnl     string `json:"closedPnl"`
 	Hash          string `json:"hash"`
-	Oid           int64    `json:"oid"`
+	Oid           int    `json:"oid"`
 	Crossed       bool   `json:"crossed"`
 	Fee           string `json:"fee"`
 	Tid           int64    `json:"tid"`
@@ -413,14 +413,14 @@ type OrderStatus struct {
 
 // RestingOrder represents an order that is resting on the book
 type RestingOrder struct {
-	Oid int64 `json:"oid"` // Order ID
+	Oid int `json:"oid"` // Order ID
 }
 
 // FilledOrder represents a filled order
 type FilledOrder struct {
 	TotalSz string `json:"totalSz,omitempty"`
 	AvgPx   string `json:"avgPx,omitempty"`
-	Oid     int64    `json:"oid,omitempty"`
+	Oid     int    `json:"oid,omitempty"`
 }
 
 // CancelResponse represents the response from order cancellation

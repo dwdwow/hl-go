@@ -440,7 +440,7 @@ func (e *Exchange) MarketClose(
 }
 
 // Cancel cancels a single order by order ID
-func (e *Exchange) Cancel(name string, oid int64) (*types.CancelResponse, error) {
+func (e *Exchange) Cancel(name string, oid int) (*types.CancelResponse, error) {
 	return e.BulkCancel([]types.CancelRequest{{Coin: name, Oid: oid}})
 }
 
