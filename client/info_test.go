@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -99,7 +100,10 @@ func TestInfo_MetaAndAssetCtxs(t *testing.T) {
 		t.Fatalf("MetaAndAssetCtxs() error = %v", err)
 	}
 
-	t.Logf("MetaAndAssetCtxs result keys: %v", getMapKeys(result))
+	if result == nil {
+		t.Fatalf("MetaAndAssetCtxs returned nil")
+	}
+	t.Logf("Universe count: %d, AssetCtxs count: %d", len(result.Meta.Universe), len(result.AssetCtxs))
 }
 
 func TestInfo_SpotMetaAndAssetCtxs(t *testing.T) {
@@ -110,7 +114,10 @@ func TestInfo_SpotMetaAndAssetCtxs(t *testing.T) {
 		t.Fatalf("SpotMetaAndAssetCtxs() error = %v", err)
 	}
 
-	t.Logf("SpotMetaAndAssetCtxs result keys: %v", getMapKeys(result))
+	if result == nil {
+		t.Fatalf("SpotMetaAndAssetCtxs returned nil")
+	}
+	t.Logf("Spot universe count: %d, AssetCtxs count: %d", len(result.Meta.Universe), len(result.AssetCtxs))
 }
 
 func TestInfo_UserState(t *testing.T) {
@@ -216,7 +223,7 @@ func TestInfo_CandlesSnapshot(t *testing.T) {
 
 	t.Logf("Candles count: %d", len(candles))
 	for i, candle := range candles {
-		t.Logf("  [%d] %v", i, candle)
+		t.Logf("  [%d] coin=%s start=%d end=%d o=%s c=%s h=%s l=%s v=%s n=%d", i, candle.S, candle.T0, candle.T, candle.O, candle.C, candle.H, candle.L, candle.V, candle.N)
 		if i >= 2 {
 			break
 		}
@@ -309,7 +316,7 @@ func TestInfo_DelegatorHistory(t *testing.T) {
 		t.Fatalf("DelegatorHistory() error = %v", err)
 	}
 
-	t.Logf("Delegator history: %v", getMapKeys(history))
+	t.Logf("Delegator history count: %d", len(history))
 }
 
 func TestInfo_QueryOrderByOid(t *testing.T) {
@@ -378,7 +385,12 @@ func TestInfo_Portfolio(t *testing.T) {
 		t.Fatalf("Portfolio() error = %v", err)
 	}
 
-	t.Logf("Portfolio: %v", getMapKeys(portfolio))
+	var decoded any
+	if err := json.Unmarshal(portfolio, &decoded); err != nil {
+		t.Logf("Portfolio: (raw) %s", string(portfolio))
+		return
+	}
+	t.Logf("Portfolio decoded type: %T", decoded)
 }
 
 func TestInfo_ExtraAgents(t *testing.T) {
@@ -389,7 +401,12 @@ func TestInfo_ExtraAgents(t *testing.T) {
 		t.Fatalf("ExtraAgents() error = %v", err)
 	}
 
-	t.Logf("Extra agents count: %d", len(agents))
+	var arr []any
+	if err := json.Unmarshal(agents, &arr); err != nil {
+		t.Logf("ExtraAgents: (raw) %s", string(agents))
+		return
+	}
+	t.Logf("Extra agents count: %d", len(arr))
 }
 
 func TestInfo_QueryUserToMultiSigSigners(t *testing.T) {
@@ -499,20 +516,13 @@ func TestInfo_PerpDexs(t *testing.T) {
 
 func TestInfo_SpotUserState(t *testing.T) {
 	info := getTestInfoUsingHTTP(t)
-
 	state, err := info.SpotUserState(testAddress)
 	if err != nil {
 		t.Fatalf("SpotUserState() error = %v", err)
 	}
 
-	t.Logf("Spot user state: %v", getMapKeys(state))
-}
-
-// 辅助函数：获取map的keys
-func getMapKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+	if state == nil {
+		t.Fatalf("SpotUserState returned nil")
 	}
-	return keys
+	t.Logf("Spot balances count: %d", len(state.Balances))
 }

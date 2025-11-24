@@ -137,18 +137,18 @@ func (i *Info) UserState(address string, dex string) (*types.UserState, error) {
 }
 
 // SpotUserState retrieves spot trading state for a user
-func (i *Info) SpotUserState(address string) (map[string]any, error) {
+func (i *Info) SpotUserState(address string) (*types.SpotUserState, error) {
 	payload := map[string]any{
 		"type": "spotClearinghouseState",
 		"user": address,
 	}
 
-	var result map[string]any
+	var result types.SpotUserState
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // OpenOrders retrieves a user's open orders
@@ -168,14 +168,14 @@ func (i *Info) OpenOrders(address string, dex string) ([]types.OpenOrder, error)
 }
 
 // FrontendOpenOrders retrieves a user's open orders with additional frontend info
-func (i *Info) FrontendOpenOrders(address string, dex string) ([]map[string]any, error) {
+func (i *Info) FrontendOpenOrders(address string, dex string) ([]types.FrontendOpenOrder, error) {
 	payload := map[string]any{
 		"type": "frontendOpenOrders",
 		"user": address,
 		"dex":  dex,
 	}
 
-	var result []map[string]any
+	var result []types.FrontendOpenOrder
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -250,26 +250,26 @@ func (i *Info) Meta(dex string) (*types.Meta, error) {
 }
 
 // MetaAndAssetCtxs retrieves exchange metadata with asset contexts
-func (i *Info) MetaAndAssetCtxs() (map[string]any, error) {
+func (i *Info) MetaAndAssetCtxs() (*types.MetaAndAssetCtxs, error) {
 	payload := map[string]any{
 		"type": "metaAndAssetCtxs",
 	}
 
-	var result map[string]any
+	var result types.MetaAndAssetCtxs
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // PerpDexs retrieves all perpetual DEXs
-func (i *Info) PerpDexs() ([]map[string]any, error) {
+func (i *Info) PerpDexs() ([]types.PerpDex, error) {
 	payload := map[string]any{
 		"type": "perpDexs",
 	}
 
-	var result []map[string]any
+	var result []types.PerpDex
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -292,21 +292,21 @@ func (i *Info) SpotMeta() (*types.SpotMeta, error) {
 }
 
 // SpotMetaAndAssetCtxs retrieves exchange spot asset contexts
-func (i *Info) SpotMetaAndAssetCtxs() (map[string]any, error) {
+func (i *Info) SpotMetaAndAssetCtxs() (*types.SpotMetaAndAssetCtxs, error) {
 	payload := map[string]any{
 		"type": "spotMetaAndAssetCtxs",
 	}
 
-	var result map[string]any
+	var result types.SpotMetaAndAssetCtxs
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // FundingHistory retrieves funding history for a given coin
-func (i *Info) FundingHistory(name string, startTime int64, endTime *int64) ([]map[string]any, error) {
+func (i *Info) FundingHistory(name string, startTime int64, endTime *int64) ([]types.FundingRecord, error) {
 	coin, ok := i.nameToCoin[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown coin: %s", name)
@@ -322,7 +322,7 @@ func (i *Info) FundingHistory(name string, startTime int64, endTime *int64) ([]m
 		payload["endTime"] = *endTime
 	}
 
-	var result []map[string]any
+	var result []types.FundingRecord
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -331,7 +331,7 @@ func (i *Info) FundingHistory(name string, startTime int64, endTime *int64) ([]m
 }
 
 // UserFundingHistory retrieves a user's funding history
-func (i *Info) UserFundingHistory(user string, startTime int64, endTime *int64) ([]map[string]any, error) {
+func (i *Info) UserFundingHistory(user string, startTime int64, endTime *int64) ([]types.FundingRecord, error) {
 	payload := map[string]any{
 		"type":      "userFunding",
 		"user":      user,
@@ -342,7 +342,7 @@ func (i *Info) UserFundingHistory(user string, startTime int64, endTime *int64) 
 		payload["endTime"] = *endTime
 	}
 
-	var result []map[string]any
+	var result []types.FundingRecord
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -371,7 +371,7 @@ func (i *Info) L2Snapshot(name string) (*types.L2BookData, error) {
 }
 
 // CandlesSnapshot retrieves candles snapshot for a given coin
-func (i *Info) CandlesSnapshot(name string, interval string, startTime int64, endTime int64) ([]map[string]any, error) {
+func (i *Info) CandlesSnapshot(name string, interval string, startTime int64, endTime int64) ([]types.Candle, error) {
 	coin, ok := i.nameToCoin[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown coin: %s", name)
@@ -389,7 +389,7 @@ func (i *Info) CandlesSnapshot(name string, interval string, startTime int64, en
 		"req":  req,
 	}
 
-	var result []map[string]any
+	var result []types.Candle
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -398,43 +398,43 @@ func (i *Info) CandlesSnapshot(name string, interval string, startTime int64, en
 }
 
 // UserFees retrieves the volume of trading activity associated with a user
-func (i *Info) UserFees(address string) (map[string]any, error) {
+func (i *Info) UserFees(address string) (*types.UserFees, error) {
 	payload := map[string]any{
 		"type": "userFees",
 		"user": address,
 	}
 
-	var result map[string]any
+	var result types.UserFees
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // UserStakingSummary retrieves the staking summary associated with a user
-func (i *Info) UserStakingSummary(address string) (map[string]any, error) {
+func (i *Info) UserStakingSummary(address string) (*types.DelegatorSummary, error) {
 	payload := map[string]any{
 		"type": "delegatorSummary",
 		"user": address,
 	}
 
-	var result map[string]any
+	var result types.DelegatorSummary
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // UserStakingDelegations retrieves the user's staking delegations
-func (i *Info) UserStakingDelegations(address string) ([]map[string]any, error) {
+func (i *Info) UserStakingDelegations(address string) ([]types.Delegation, error) {
 	payload := map[string]any{
 		"type": "delegations",
 		"user": address,
 	}
 
-	var result []map[string]any
+	var result []types.Delegation
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -443,13 +443,13 @@ func (i *Info) UserStakingDelegations(address string) ([]map[string]any, error) 
 }
 
 // UserStakingRewards retrieves the historic staking rewards associated with a user
-func (i *Info) UserStakingRewards(address string) ([]map[string]any, error) {
+func (i *Info) UserStakingRewards(address string) ([]types.DelegatorReward, error) {
 	payload := map[string]any{
 		"type": "delegatorRewards",
 		"user": address,
 	}
 
-	var result []map[string]any
+	var result []types.DelegatorReward
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -458,13 +458,13 @@ func (i *Info) UserStakingRewards(address string) ([]map[string]any, error) {
 }
 
 // DelegatorHistory retrieves comprehensive staking history for a user
-func (i *Info) DelegatorHistory(user string) (map[string]any, error) {
+func (i *Info) DelegatorHistory(user string) ([]types.DelegatorHistoryEntry, error) {
 	payload := map[string]any{
 		"type": "delegatorHistory",
 		"user": user,
 	}
 
-	var result map[string]any
+	var result []types.DelegatorHistoryEntry
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -473,60 +473,60 @@ func (i *Info) DelegatorHistory(user string) (map[string]any, error) {
 }
 
 // QueryOrderByOid queries order status by order ID
-func (i *Info) QueryOrderByOid(user string, oid int) (map[string]any, error) {
+func (i *Info) QueryOrderByOid(user string, oid int) (*types.OrderQueryResponse, error) {
 	payload := map[string]any{
 		"type": "orderStatus",
 		"user": user,
 		"oid":  oid,
 	}
 
-	var result map[string]any
+	var result types.OrderQueryResponse
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // QueryOrderByCloid queries order status by client order ID
-func (i *Info) QueryOrderByCloid(user string, cloid *types.Cloid) (map[string]any, error) {
+func (i *Info) QueryOrderByCloid(user string, cloid *types.Cloid) (*types.OrderQueryResponse, error) {
 	payload := map[string]any{
 		"type": "orderStatus",
 		"user": user,
 		"oid":  cloid.ToRaw(),
 	}
 
-	var result map[string]any
+	var result types.OrderQueryResponse
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // QueryReferralState queries referral state for a user
-func (i *Info) QueryReferralState(user string) (map[string]any, error) {
+func (i *Info) QueryReferralState(user string) (*types.ReferralResponse, error) {
 	payload := map[string]any{
 		"type": "referral",
 		"user": user,
 	}
 
-	var result map[string]any
+	var result types.ReferralResponse
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // QuerySubAccounts queries sub-accounts for a user
-func (i *Info) QuerySubAccounts(user string) (map[string]any, error) {
+func (i *Info) QuerySubAccounts(user string) ([]types.SubAccount, error) {
 	payload := map[string]any{
 		"type": "subAccounts",
 		"user": user,
 	}
 
-	var result map[string]any
+	var result []types.SubAccount
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -535,13 +535,13 @@ func (i *Info) QuerySubAccounts(user string) (map[string]any, error) {
 }
 
 // HistoricalOrders retrieves a user's historical orders (max 2000 most recent)
-func (i *Info) HistoricalOrders(user string) ([]map[string]any, error) {
+func (i *Info) HistoricalOrders(user string) ([]types.OrderQueryInner, error) {
 	payload := map[string]any{
 		"type": "historicalOrders",
 		"user": user,
 	}
 
-	var result []map[string]any
+	var result []types.OrderQueryInner
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -550,7 +550,7 @@ func (i *Info) HistoricalOrders(user string) ([]map[string]any, error) {
 }
 
 // UserNonFundingLedgerUpdates retrieves non-funding ledger updates for a user
-func (i *Info) UserNonFundingLedgerUpdates(user string, startTime int64, endTime *int64) ([]map[string]any, error) {
+func (i *Info) UserNonFundingLedgerUpdates(user string, startTime int64, endTime *int64) (types.RawJSON, error) {
 	payload := map[string]any{
 		"type":      "userNonFundingLedgerUpdates",
 		"user":      user,
@@ -561,7 +561,7 @@ func (i *Info) UserNonFundingLedgerUpdates(user string, startTime int64, endTime
 		payload["endTime"] = *endTime
 	}
 
-	var result []map[string]any
+	var result types.RawJSON
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -570,13 +570,12 @@ func (i *Info) UserNonFundingLedgerUpdates(user string, startTime int64, endTime
 }
 
 // Portfolio retrieves comprehensive portfolio performance data
-func (i *Info) Portfolio(user string) (map[string]any, error) {
+func (i *Info) Portfolio(user string) (types.RawJSON, error) {
 	payload := map[string]any{
 		"type": "portfolio",
 		"user": user,
 	}
-
-	var result map[string]any
+	var result types.RawJSON
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -585,13 +584,13 @@ func (i *Info) Portfolio(user string) (map[string]any, error) {
 }
 
 // ExtraAgents retrieves extra agents associated with a user
-func (i *Info) ExtraAgents(user string) ([]map[string]any, error) {
+func (i *Info) ExtraAgents(user string) (types.RawJSON, error) {
 	payload := map[string]any{
 		"type": "extraAgents",
 		"user": user,
 	}
 
-	var result []map[string]any
+	var result types.RawJSON
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -600,13 +599,13 @@ func (i *Info) ExtraAgents(user string) ([]map[string]any, error) {
 }
 
 // QueryUserToMultiSigSigners retrieves the multi-sig signers for a multi-sig user
-func (i *Info) QueryUserToMultiSigSigners(multiSigUser string) (map[string]any, error) {
+func (i *Info) QueryUserToMultiSigSigners(multiSigUser string) (types.RawJSON, error) {
 	payload := map[string]any{
 		"type": "userToMultiSigSigners",
 		"user": multiSigUser,
 	}
 
-	var result map[string]any
+	var result types.RawJSON
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -615,42 +614,42 @@ func (i *Info) QueryUserToMultiSigSigners(multiSigUser string) (map[string]any, 
 }
 
 // QueryPerpDeployAuctionStatus retrieves the perp deploy auction status
-func (i *Info) QueryPerpDeployAuctionStatus() (map[string]any, error) {
+func (i *Info) QueryPerpDeployAuctionStatus() (*types.PerpDeployAuctionStatus, error) {
 	payload := map[string]any{
 		"type": "perpDeployAuctionStatus",
 	}
 
-	var result map[string]any
+	var result types.PerpDeployAuctionStatus
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // QueryUserDexAbstractionState retrieves the dex abstraction state for a user
-func (i *Info) QueryUserDexAbstractionState(user string) (map[string]any, error) {
+func (i *Info) QueryUserDexAbstractionState(user string) (bool, error) {
 	payload := map[string]any{
 		"type": "userDexAbstraction",
 		"user": user,
 	}
 
-	var result map[string]any
+	var result bool
 	if err := i.infoPost("/info", payload, &result); err != nil {
-		return nil, err
+		return false, err
 	}
 
 	return result, nil
 }
 
 // UserTwapSliceFills retrieves a user's TWAP slice fills (at most 2000 most recent)
-func (i *Info) UserTwapSliceFills(user string) ([]map[string]any, error) {
+func (i *Info) UserTwapSliceFills(user string) ([]types.TwapSliceFill, error) {
 	payload := map[string]any{
 		"type": "userTwapSliceFills",
 		"user": user,
 	}
 
-	var result []map[string]any
+	var result []types.TwapSliceFill
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -659,13 +658,13 @@ func (i *Info) UserTwapSliceFills(user string) ([]map[string]any, error) {
 }
 
 // UserVaultEquities retrieves user's equity positions across all vaults
-func (i *Info) UserVaultEquities(user string) (map[string]any, error) {
+func (i *Info) UserVaultEquities(user string) ([]types.VaultEquity, error) {
 	payload := map[string]any{
 		"type": "userVaultEquities",
 		"user": user,
 	}
 
-	var result map[string]any
+	var result []types.VaultEquity
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -674,28 +673,86 @@ func (i *Info) UserVaultEquities(user string) (map[string]any, error) {
 }
 
 // UserRole retrieves the role and account type information for a user
-func (i *Info) UserRole(user string) (map[string]any, error) {
+func (i *Info) UserRole(user string) (*types.UserRole, error) {
 	payload := map[string]any{
 		"type": "userRole",
 		"user": user,
 	}
 
-	var result map[string]any
+	var result types.UserRole
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // UserRateLimit retrieves user's API rate limit configuration and usage
-func (i *Info) UserRateLimit(user string) (map[string]any, error) {
+func (i *Info) UserRateLimit(user string) (*types.UserRateLimitResponse, error) {
 	payload := map[string]any{
 		"type": "userRateLimit",
 		"user": user,
 	}
 
-	var result map[string]any
+	var result types.UserRateLimitResponse
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// QuerySpotDeployAuctionStatus retrieves the spot deploy auction status for a user
+func (i *Info) QuerySpotDeployAuctionStatus(user string) (*types.SpotDeployState, error) {
+	payload := map[string]any{
+		"type": "spotDeployState",
+		"user": user,
+	}
+
+	var result types.SpotDeployState
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// QuerySpotPairDeployAuctionStatus retrieves the spot pair deploy auction status
+func (i *Info) QuerySpotPairDeployAuctionStatus() (*types.AuctionStatus, error) {
+	payload := map[string]any{
+		"type": "spotPairDeployAuctionStatus",
+	}
+
+	var result types.AuctionStatus
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// TokenDetails retrieves information about a token by tokenId
+func (i *Info) TokenDetails(tokenId string) (*types.TokenDetails, error) {
+	payload := map[string]any{
+		"type":    "tokenDetails",
+		"tokenId": tokenId,
+	}
+
+	var result types.TokenDetails
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// PredictedFundings retrieves predicted funding rates for different venues
+func (i *Info) PredictedFundings() (types.PredictedFundings, error) {
+	payload := map[string]any{
+		"type": "predictedFundings",
+	}
+
+	var result types.PredictedFundings
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
@@ -703,17 +760,62 @@ func (i *Info) UserRateLimit(user string) (map[string]any, error) {
 	return result, nil
 }
 
-// QuerySpotDeployAuctionStatus retrieves the spot deploy auction status for a user
-func (i *Info) QuerySpotDeployAuctionStatus(user string) (map[string]any, error) {
+// PerpsAtOpenInterestCap returns coin names that are at open interest cap
+func (i *Info) PerpsAtOpenInterestCap() ([]string, error) {
 	payload := map[string]any{
-		"type": "spotDeployState",
-		"user": user,
+		"type": "perpsAtOpenInterestCap",
 	}
 
-	var result map[string]any
+	var result []string
 	if err := i.infoPost("/info", payload, &result); err != nil {
 		return nil, err
 	}
 
 	return result, nil
+}
+
+// PerpDexLimits retrieves builder-deployed perp market limits
+func (i *Info) PerpDexLimits(dex string) (*types.PerpDexLimits, error) {
+	payload := map[string]any{
+		"type": "perpDexLimits",
+		"dex":  dex,
+	}
+
+	var result types.PerpDexLimits
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// PerpDexStatus retrieves simple status data for a perp dex
+func (i *Info) PerpDexStatus(dex string) (*types.PerpDexStatus, error) {
+	payload := map[string]any{
+		"type": "perpDexStatus",
+		"dex":  dex,
+	}
+
+	var result types.PerpDexStatus
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// ActiveAssetData retrieves a user's active asset data for a coin
+func (i *Info) ActiveAssetData(user string, coin string) (*types.ActiveAssetData, error) {
+	payload := map[string]any{
+		"type": "activeAssetData",
+		"user": user,
+		"coin": coin,
+	}
+
+	var result types.ActiveAssetData
+	if err := i.infoPost("/info", payload, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }

@@ -1,6 +1,8 @@
 // Package ws types defines all WebSocket message structures for Hyperliquid.
 package ws
 
+import "github.com/dwdwow/hl-go/types"
+
 // WebSocket data type definitions based on Hyperliquid API documentation.
 //
 // These types represent the various messages received from Hyperliquid WebSocket feeds.
@@ -81,7 +83,7 @@ type WsBook struct {
 type WsLevel struct {
 	Px float64 `json:"px,string"` // price
 	Sz float64 `json:"sz,string"` // size
-	N  int    `json:"n"`  // number of orders
+	N  int     `json:"n"`         // number of orders
 }
 
 // WsBbo represents best bid/offer updates
@@ -117,9 +119,9 @@ type Candle struct {
 
 // WsOrder represents user order updates
 type WsOrder struct {
-	Order           WsBasicOrder `json:"order"`
-	Status          string       `json:"status"`
-	StatusTimestamp int64        `json:"statusTimestamp"`
+	Order           WsBasicOrder          `json:"order"`
+	Status          types.OrderStatusType `json:"status"`
+	StatusTimestamp int64                 `json:"statusTimestamp"`
 }
 
 // WsBasicOrder represents basic order information

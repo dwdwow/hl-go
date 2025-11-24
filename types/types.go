@@ -149,7 +149,54 @@ type AssetInfo struct {
 
 // Meta represents exchange metadata
 type Meta struct {
-	Universe []AssetInfo `json:"universe"`
+	Universe     []AssetInfo       `json:"universe"`
+	MarginTables []MarginTablePair `json:"marginTables,omitempty"`
+}
+
+// MarginTier represents a single tier in a margin table
+type MarginTier struct {
+	LowerBound  string `json:"lowerBound"`
+	MaxLeverage int    `json:"maxLeverage"`
+}
+
+// MarginTableData is the object carried alongside the margin table index
+type MarginTableData struct {
+	Description string       `json:"description"`
+	MarginTiers []MarginTier `json:"marginTiers"`
+}
+
+// MarginTablePair represents an entry in the marginTables array which is
+// encoded as [index, { ...data... }] in the wire format.
+type MarginTablePair struct {
+	Index int             `json:"index"`
+	Data  MarginTableData `json:"data"`
+}
+
+// UnmarshalJSON supports both the array form [index,obj] and an object form
+func (m *MarginTablePair) UnmarshalJSON(b []byte) error {
+	// try array form first
+	var arr []json.RawMessage
+	if err := json.Unmarshal(b, &arr); err == nil && len(arr) == 2 {
+		if err := json.Unmarshal(arr[0], &m.Index); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(arr[1], &m.Data); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// fallback to object form
+	var obj struct {
+		Index int             `json:"index"`
+		Data  MarginTableData `json:"data"`
+	}
+	if err := json.Unmarshal(b, &obj); err != nil {
+		return err
+	}
+	m.Index = obj.Index
+	m.Data = obj.Data
+	return nil
 }
 
 // SpotAssetInfo represents information about a spot trading pair
@@ -404,6 +451,85 @@ type OrderDataBody struct {
 	Statuses []OrderStatus `json:"statuses"`
 }
 
+// OrderStatusType represents the canonical status string for an order.
+type OrderStatusType string
+
+const (
+	OrderStatusOpen                                      OrderStatusType = "open"                                      // Placed successfully
+	OrderStatusFilled                                    OrderStatusType = "filled"                                    // Filled
+	OrderStatusCanceled                                  OrderStatusType = "canceled"                                  // Canceled by user
+	OrderStatusTriggered                                 OrderStatusType = "triggered"                                 // Trigger order triggered
+	OrderStatusRejected                                  OrderStatusType = "rejected"                                  // Rejected at time of placement
+	OrderStatusMarginCanceled                            OrderStatusType = "marginCanceled"                            // Canceled because insufficient margin to fill
+	OrderStatusVaultWithdrawalCanceled                   OrderStatusType = "vaultWithdrawalCanceled"                   // Vaults only. Canceled due to a user's withdrawal from vault
+	OrderStatusOpenInterestCapCanceled                   OrderStatusType = "openInterestCapCanceled"                   // Canceled due to order being too aggressive when open interest was at cap
+	OrderStatusSelfTradeCanceled                         OrderStatusType = "selfTradeCanceled"                         // Canceled due to self-trade prevention
+	OrderStatusReduceOnlyCanceled                        OrderStatusType = "reduceOnlyCanceled"                        // Canceled reduced-only order that does not reduce position
+	OrderStatusSiblingFilledCanceled                     OrderStatusType = "siblingFilledCanceled"                     // TP/SL only. Canceled due to sibling ordering being filled
+	OrderStatusDelistedCanceled                          OrderStatusType = "delistedCanceled"                          // Canceled due to asset delisting
+	OrderStatusLiquidatedCanceled                        OrderStatusType = "liquidatedCanceled"                        // Canceled due to liquidation
+	OrderStatusScheduledCancel                           OrderStatusType = "scheduledCancel"                           // API only. Canceled due to exceeding scheduled cancel deadline (dead man's switch)
+	OrderStatusTickRejected                              OrderStatusType = "tickRejected"                              // Rejected due to invalid tick price
+	OrderStatusMinTradeNtlRejected                       OrderStatusType = "minTradeNtlRejected"                       // Rejected due to order notional below minimum
+	OrderStatusPerpMarginRejected                        OrderStatusType = "perpMarginRejected"                        // Rejected due to insufficient margin
+	OrderStatusReduceOnlyRejected                        OrderStatusType = "reduceOnlyRejected"                        // Rejected due to reduce only
+	OrderStatusBadAloPxRejected                          OrderStatusType = "badAloPxRejected"                          // Rejected due to post-only immediate match
+	OrderStatusIocCancelRejected                         OrderStatusType = "iocCancelRejected"                         // Rejected due to IOC not able to match
+	OrderStatusBadTriggerPxRejected                      OrderStatusType = "badTriggerPxRejected"                      // Rejected due to invalid TP/SL price
+	OrderStatusMarketOrderNoLiquidityRejected            OrderStatusType = "marketOrderNoLiquidityRejected"            // Rejected due to lack of liquidity for market order
+	OrderStatusPositionIncreaseAtOpenInterestCapRejected OrderStatusType = "positionIncreaseAtOpenInterestCapRejected" // Rejected due to open interest cap
+	OrderStatusPositionFlipAtOpenInterestCapRejected     OrderStatusType = "positionFlipAtOpenInterestCapRejected"     // Rejected due to open interest cap
+	OrderStatusTooAggressiveAtOpenInterestCapRejected    OrderStatusType = "tooAggressiveAtOpenInterestCapRejected"    // Rejected due to price too aggressive at open interest cap
+	OrderStatusOpenInterestIncreaseRejected              OrderStatusType = "openInterestIncreaseRejected"              // Rejected due to open interest cap
+	OrderStatusInsufficientSpotBalanceRejected           OrderStatusType = "insufficientSpotBalanceRejected"           // Rejected due to insufficient spot balance
+	OrderStatusOracleRejected                            OrderStatusType = "oracleRejected"                            // Rejected due to price too far from oracle
+	OrderStatusPerpMaxPositionRejected                   OrderStatusType = "perpMaxPositionRejected"                   // Rejected due to exceeding margin tier limit at current leverage
+)
+
+// orderStatusDescriptions maps statuses to human-friendly explanations.
+var orderStatusDescriptions = map[OrderStatusType]string{
+	OrderStatusOpen:                                      "Placed successfully",
+	OrderStatusFilled:                                    "Filled",
+	OrderStatusCanceled:                                  "Canceled by user",
+	OrderStatusTriggered:                                 "Trigger order triggered",
+	OrderStatusRejected:                                  "Rejected at time of placement",
+	OrderStatusMarginCanceled:                            "Canceled because insufficient margin to fill",
+	OrderStatusVaultWithdrawalCanceled:                   "Vaults only. Canceled due to a user's withdrawal from vault",
+	OrderStatusOpenInterestCapCanceled:                   "Canceled due to order being too aggressive when open interest was at cap",
+	OrderStatusSelfTradeCanceled:                         "Canceled due to self-trade prevention",
+	OrderStatusReduceOnlyCanceled:                        "Canceled reduced-only order that does not reduce position",
+	OrderStatusSiblingFilledCanceled:                     "TP/SL only. Canceled due to sibling ordering being filled",
+	OrderStatusDelistedCanceled:                          "Canceled due to asset delisting",
+	OrderStatusLiquidatedCanceled:                        "Canceled due to liquidation",
+	OrderStatusScheduledCancel:                           "API only. Canceled due to exceeding scheduled cancel deadline (dead man's switch)",
+	OrderStatusTickRejected:                              "Rejected due to invalid tick price",
+	OrderStatusMinTradeNtlRejected:                       "Rejected due to order notional below minimum",
+	OrderStatusPerpMarginRejected:                        "Rejected due to insufficient margin",
+	OrderStatusReduceOnlyRejected:                        "Rejected due to reduce only",
+	OrderStatusBadAloPxRejected:                          "Rejected due to post-only immediate match",
+	OrderStatusIocCancelRejected:                         "Rejected due to IOC not able to match",
+	OrderStatusBadTriggerPxRejected:                      "Rejected due to invalid TP/SL price",
+	OrderStatusMarketOrderNoLiquidityRejected:            "Rejected due to lack of liquidity for market order",
+	OrderStatusPositionIncreaseAtOpenInterestCapRejected: "Rejected due to open interest cap",
+	OrderStatusPositionFlipAtOpenInterestCapRejected:     "Rejected due to open interest cap",
+	OrderStatusTooAggressiveAtOpenInterestCapRejected:    "Rejected due to price too aggressive at open interest cap",
+	OrderStatusOpenInterestIncreaseRejected:              "Rejected due to open interest cap",
+	OrderStatusInsufficientSpotBalanceRejected:           "Rejected due to insufficient spot balance",
+	OrderStatusOracleRejected:                            "Rejected due to price too far from oracle",
+	OrderStatusPerpMaxPositionRejected:                   "Rejected due to exceeding margin tier limit at current leverage",
+}
+
+// String returns the raw status string.
+func (s OrderStatusType) String() string { return string(s) }
+
+// Description returns a human-friendly explanation for the status if available.
+func (s OrderStatusType) Description() string {
+	if d, ok := orderStatusDescriptions[s]; ok {
+		return d
+	}
+	return ""
+}
+
 // OrderStatus represents the status of a single order
 type OrderStatus struct {
 	Resting *RestingOrder `json:"resting,omitempty"`
@@ -481,4 +607,377 @@ type TWAPCancelDataBody struct {
 // DefaultResponse represents the default response for most operations
 type DefaultResponse struct {
 	Type string `json:"type"` // "default"
+}
+
+// FrontendOpenOrder represents open order with frontend-specific fields
+type FrontendOpenOrder struct {
+	Coin             string `json:"coin"`
+	IsPositionTpsl   bool   `json:"isPositionTpsl"`
+	IsTrigger        bool   `json:"isTrigger"`
+	LimitPx          string `json:"limitPx"`
+	Oid              int    `json:"oid"`
+	OrderType        string `json:"orderType"`
+	OrigSz           string `json:"origSz"`
+	ReduceOnly       bool   `json:"reduceOnly"`
+	Side             Side   `json:"side"`
+	Sz               string `json:"sz"`
+	Timestamp        int64  `json:"timestamp"`
+	TriggerCondition string `json:"triggerCondition"`
+	TriggerPx        string `json:"triggerPx"`
+}
+
+// SpotBalance represents a balance entry in spot state
+type SpotBalance struct {
+	Coin     string `json:"coin"`
+	Token    int    `json:"token"`
+	Total    string `json:"total"`
+	Hold     string `json:"hold"`
+	EntryNtl string `json:"entryNtl"`
+}
+
+// SpotUserState represents spot clearinghouse state for a user
+type SpotUserState struct {
+	Balances []SpotBalance `json:"balances"`
+}
+
+// Candle represents a single candle entry in candle snapshot
+type Candle struct {
+	T  int64  `json:"T"` // end time in ms
+	C  string `json:"c"`
+	H  string `json:"h"`
+	I  string `json:"i"` // interval
+	L  string `json:"l"`
+	N  int    `json:"n"`
+	O  string `json:"o"`
+	S  string `json:"s"` // coin
+	T0 int64  `json:"t"` // start time
+	V  string `json:"v"`
+}
+
+// FundingRecord is a minimal funding history record
+type FundingRecord struct {
+	Time int64  `json:"time"`
+	Px   string `json:"px"`
+	Rate string `json:"rate"`
+}
+
+// UserFees represents the user fees summary and schedule
+type UserFees struct {
+	DailyUserVlm                []RawJSON   `json:"dailyUserVlm"`
+	FeeSchedule                 RawJSON     `json:"feeSchedule"`
+	UserCrossRate               string      `json:"userCrossRate"`
+	UserAddRate                 string      `json:"userAddRate"`
+	UserSpotCrossRate           string      `json:"userSpotCrossRate"`
+	UserSpotAddRate             string      `json:"userSpotAddRate"`
+	ActiveReferralDiscount      string      `json:"activeReferralDiscount"`
+	Trial                       interface{} `json:"trial"`
+	FeeTrialReward              string      `json:"feeTrialReward"`
+	NextTrialAvailableTimestamp *int64      `json:"nextTrialAvailableTimestamp"`
+	StakingLink                 RawJSON     `json:"stakingLink"`
+	ActiveStakingDiscount       RawJSON     `json:"activeStakingDiscount"`
+}
+
+// Delegation represents a staking delegation entry
+type Delegation struct {
+	Validator            string `json:"validator"`
+	Amount               string `json:"amount"`
+	LockedUntilTimestamp int64  `json:"lockedUntilTimestamp"`
+}
+
+// DelegatorSummary represents staking summary for a user
+type DelegatorSummary struct {
+	Delegated              string `json:"delegated"`
+	Undelegated            string `json:"undelegated"`
+	TotalPendingWithdrawal string `json:"totalPendingWithdrawal"`
+	NPendingWithdrawals    int    `json:"nPendingWithdrawals"`
+}
+
+// DelegatorHistoryEntry represents a single history entry for delegations
+type DelegatorHistoryEntry struct {
+	Time  int64   `json:"time"`
+	Hash  string  `json:"hash"`
+	Delta RawJSON `json:"delta"`
+}
+
+// VaultFollower represents a follower in a vault
+type VaultFollower struct {
+	User           string `json:"user"`
+	VaultEquity    string `json:"vaultEquity"`
+	Pnl            string `json:"pnl"`
+	AllTimePnl     string `json:"allTimePnl"`
+	DaysFollowing  int    `json:"daysFollowing"`
+	VaultEntryTime int64  `json:"vaultEntryTime"`
+	LockupUntil    int64  `json:"lockupUntil"`
+}
+
+// VaultDetails represents detailed information about a vault
+type VaultDetails struct {
+	Name                  string          `json:"name"`
+	VaultAddress          string          `json:"vaultAddress"`
+	Leader                string          `json:"leader"`
+	Description           string          `json:"description"`
+	Portfolio             []RawJSON       `json:"portfolio"`
+	Apr                   float64         `json:"apr"`
+	FollowerState         interface{}     `json:"followerState"`
+	LeaderFraction        float64         `json:"leaderFraction"`
+	LeaderCommission      int             `json:"leaderCommission"`
+	Followers             []VaultFollower `json:"followers"`
+	MaxDistributable      float64         `json:"maxDistributable"`
+	MaxWithdrawable       float64         `json:"maxWithdrawable"`
+	IsClosed              bool            `json:"isClosed"`
+	Relationship          RawJSON         `json:"relationship"`
+	AllowDeposits         bool            `json:"allowDeposits"`
+	AlwaysCloseOnWithdraw bool            `json:"alwaysCloseOnWithdraw"`
+}
+
+// VaultEquity represents a user's equity in a vault
+type VaultEquity struct {
+	VaultAddress string `json:"vaultAddress"`
+	Equity       string `json:"equity"`
+}
+
+// ReferralResponse is a minimal representation for referral query
+type ReferralResponse struct {
+	ReferredBy       RawJSON   `json:"referredBy"`
+	CumVlm           string    `json:"cumVlm"`
+	UnclaimedRewards string    `json:"unclaimedRewards"`
+	ClaimedRewards   string    `json:"claimedRewards"`
+	BuilderRewards   string    `json:"builderRewards"`
+	TokenToState     []RawJSON `json:"tokenToState"`
+	ReferrerState    RawJSON   `json:"referrerState"`
+	RewardHistory    []RawJSON `json:"rewardHistory"`
+}
+
+// UserRateLimitResponse represents the user rate limit response
+type UserRateLimitResponse struct {
+	CumVlm           string `json:"cumVlm"`
+	NRequestsUsed    int    `json:"nRequestsUsed"`
+	NRequestsCap     int    `json:"nRequestsCap"`
+	NRequestsSurplus int    `json:"nRequestsSurplus"`
+}
+
+// RawJSON is an alias for json.RawMessage to represent arbitrary JSON blobs
+type RawJSON = json.RawMessage
+
+// MetaAndAssetCtxs represents perp meta with arbitrary asset contexts
+// PerpAssetCtx represents asset-specific runtime context for perp markets
+type PerpAssetCtx struct {
+	DayNtlVlm    string   `json:"dayNtlVlm"`
+	Funding      string   `json:"funding"`
+	ImpactPxs    []string `json:"impactPxs"`
+	MarkPx       string   `json:"markPx"`
+	MidPx        string   `json:"midPx"`
+	OpenInterest string   `json:"openInterest"`
+	OraclePx     string   `json:"oraclePx"`
+	Premium      string   `json:"premium"`
+	PrevDayPx    string   `json:"prevDayPx"`
+}
+
+type MetaAndAssetCtxs struct {
+	Meta      Meta           `json:"meta"`
+	AssetCtxs []PerpAssetCtx `json:"assetCtxs"`
+}
+
+// PerpDex represents a perpetual DEX entry (shape can vary)
+// PerpDex represents a perpetual DEX entry with known fields where available.
+type PerpDex struct {
+	Name                  string     `json:"name"`
+	FullName              *string    `json:"fullName,omitempty"`
+	Deployer              *string    `json:"deployer,omitempty"`
+	OracleUpdater         *string    `json:"oracleUpdater,omitempty"`
+	FeeRecipient          *string    `json:"feeRecipient,omitempty"`
+	AssetToStreamingOiCap [][]string `json:"assetToStreamingOiCap,omitempty"`
+}
+
+// DelegatorReward represents a staking reward entry
+type DelegatorReward struct {
+	Time        int64  `json:"time"`
+	Source      string `json:"source"`
+	TotalAmount string `json:"totalAmount"`
+}
+
+// PerpDeployAuctionStatus describes the auction status for perp deploys.
+type PerpDeployAuctionStatus struct {
+	StartTimeSeconds int64   `json:"startTimeSeconds"`
+	DurationSeconds  int64   `json:"durationSeconds"`
+	StartGas         string  `json:"startGas"`
+	CurrentGas       string  `json:"currentGas"`
+	EndGas           *string `json:"endGas"`
+}
+
+// AuctionStatus is a generic auction status structure reused for perp/spot auctions
+type AuctionStatus = PerpDeployAuctionStatus
+
+// SpotTokenSpec describes a spot token specification used in spot deploy state
+type SpotTokenSpec struct {
+	Name        string `json:"name"`
+	SzDecimals  int    `json:"szDecimals"`
+	WeiDecimals int    `json:"weiDecimals"`
+}
+
+// SpotDeployStateEntry represents a single entry in the spot deploy "states" array
+type SpotDeployStateEntry struct {
+	Token                        int           `json:"token"`
+	Spec                         SpotTokenSpec `json:"spec"`
+	FullName                     *string       `json:"fullName,omitempty"`
+	Spots                        []int         `json:"spots"`
+	MaxSupply                    string        `json:"maxSupply"`
+	HyperliquidityGenesisBalance string        `json:"hyperliquidityGenesisBalance"`
+	TotalGenesisBalanceWei       string        `json:"totalGenesisBalanceWei"`
+	UserGenesisBalances          [][]string    `json:"userGenesisBalances"`
+	ExistingTokenGenesisBalances []interface{} `json:"existingTokenGenesisBalances"`
+}
+
+// SpotDeployState is the response for `spotDeployState` which includes states and a gas auction
+type SpotDeployState struct {
+	States     []SpotDeployStateEntry `json:"states"`
+	GasAuction AuctionStatus          `json:"gasAuction"`
+}
+
+// TokenDetails is the response for `tokenDetails`
+type TokenDetails struct {
+	Name                       string    `json:"name"`
+	MaxSupply                  string    `json:"maxSupply"`
+	TotalSupply                string    `json:"totalSupply"`
+	CirculatingSupply          string    `json:"circulatingSupply"`
+	SzDecimals                 int       `json:"szDecimals"`
+	WeiDecimals                int       `json:"weiDecimals"`
+	MidPx                      *string   `json:"midPx,omitempty"`
+	MarkPx                     *string   `json:"markPx,omitempty"`
+	PrevDayPx                  *string   `json:"prevDayPx,omitempty"`
+	Genesis                    RawJSON   `json:"genesis"`
+	Deployer                   *string   `json:"deployer,omitempty"`
+	DeployGas                  *string   `json:"deployGas,omitempty"`
+	DeployTime                 *string   `json:"deployTime,omitempty"`
+	SeededUsdc                 *string   `json:"seededUsdc,omitempty"`
+	NonCirculatingUserBalances []RawJSON `json:"nonCirculatingUserBalances"`
+	FutureEmissions            *string   `json:"futureEmissions,omitempty"`
+}
+
+// Predicted funding structures and custom unmarshalling because the
+// wire format is an array-of-arrays: [ ["COIN", [["Venue", {..}], ... ] ], ... ]
+type PredictedFundingInfo struct {
+	FundingRate     string `json:"fundingRate"`
+	NextFundingTime int64  `json:"nextFundingTime"`
+}
+
+type PredictedFundingVenue struct {
+	Venue string               `json:"venue"`
+	Info  PredictedFundingInfo `json:"info"`
+}
+
+type PredictedFundingEntry struct {
+	Coin   string                  `json:"coin"`
+	Venues []PredictedFundingVenue `json:"venues"`
+}
+
+type PredictedFundings []PredictedFundingEntry
+
+// UnmarshalJSON supports the wire-format described above.
+func (p *PredictedFundings) UnmarshalJSON(b []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		// Maybe it's empty or another form
+		return err
+	}
+
+	var entries []PredictedFundingEntry
+	for _, item := range raw {
+		// each item is [ coin, venuesArray ]
+		var pair []json.RawMessage
+		if err := json.Unmarshal(item, &pair); err != nil {
+			return err
+		}
+		if len(pair) != 2 {
+			continue
+		}
+		var coin string
+		if err := json.Unmarshal(pair[0], &coin); err != nil {
+			return err
+		}
+		var venuesRaw []json.RawMessage
+		if err := json.Unmarshal(pair[1], &venuesRaw); err != nil {
+			return err
+		}
+		var venues []PredictedFundingVenue
+		for _, vr := range venuesRaw {
+			var vpair []json.RawMessage
+			if err := json.Unmarshal(vr, &vpair); err != nil {
+				return err
+			}
+			if len(vpair) != 2 {
+				continue
+			}
+			var venue string
+			if err := json.Unmarshal(vpair[0], &venue); err != nil {
+				return err
+			}
+			var info PredictedFundingInfo
+			if err := json.Unmarshal(vpair[1], &info); err != nil {
+				return err
+			}
+			venues = append(venues, PredictedFundingVenue{Venue: venue, Info: info})
+		}
+		entries = append(entries, PredictedFundingEntry{Coin: coin, Venues: venues})
+	}
+	*p = entries
+	return nil
+}
+
+// SubAccount represents a user's subaccount info returned by info API
+type SubAccount struct {
+	Name               string    `json:"name"`
+	SubAccountUser     string    `json:"subAccountUser"`
+	Master             string    `json:"master"`
+	ClearinghouseState UserState `json:"clearinghouseState"`
+	SpotState          struct {
+		Balances []SpotBalance `json:"balances"`
+	} `json:"spotState"`
+}
+
+// OrderQueryInner models the inner order/status structure returned by orderStatus
+type OrderQueryInner struct {
+	Order           OpenOrder `json:"order"`
+	Status          string    `json:"status"`
+	StatusTimestamp int64     `json:"statusTimestamp"`
+}
+
+// OrderQueryResponse is the wrapper returned by orderStatus
+type OrderQueryResponse struct {
+	Status string          `json:"status"`
+	Order  OrderQueryInner `json:"order"`
+}
+
+// TwapSliceFill represents a TWAP slice fill with metadata
+type TwapSliceFill struct {
+	Fill   Fill `json:"fill"`
+	TwapId int  `json:"twapId"`
+}
+
+// UserRole represents a user's role
+type UserRole struct {
+	Role string `json:"role"`
+}
+
+// PerpDexLimits represents builder-deployed perp market limits
+type PerpDexLimits struct {
+	TotalOiCap     string     `json:"totalOiCap"`
+	OiSzCapPerPerp string     `json:"oiSzCapPerPerp"`
+	MaxTransferNtl string     `json:"maxTransferNtl"`
+	CoinToOiCap    [][]string `json:"coinToOiCap"`
+}
+
+// PerpDexStatus represents simple status for perp dex
+type PerpDexStatus struct {
+	TotalNetDeposit string `json:"totalNetDeposit"`
+}
+
+// ActiveAssetData represents user's active asset data
+type ActiveAssetData struct {
+	User             string   `json:"user"`
+	Coin             string   `json:"coin"`
+	Leverage         Leverage `json:"leverage"`
+	MaxTradeSzs      []string `json:"maxTradeSzs"`
+	AvailableToTrade []string `json:"availableToTrade"`
+	MarkPx           string   `json:"markPx"`
 }
