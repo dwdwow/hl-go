@@ -62,8 +62,8 @@ const (
 type WsTrade struct {
 	Coin  string    `json:"coin"`
 	Side  string    `json:"side"`
-	Px    string    `json:"px"`
-	Sz    string    `json:"sz"`
+	Px    float64   `json:"px,string"`
+	Sz    float64   `json:"sz,string"`
 	Hash  string    `json:"hash"`
 	Time  int64     `json:"time"`
 	Tid   int64     `json:"tid"`   // 50-bit hash of (buyer_oid, seller_oid)
@@ -79,8 +79,8 @@ type WsBook struct {
 
 // WsLevel represents a price level in the order book
 type WsLevel struct {
-	Px string `json:"px"` // price
-	Sz string `json:"sz"` // size
+	Px float64 `json:"px,string"` // price
+	Sz float64 `json:"sz,string"` // size
 	N  int    `json:"n"`  // number of orders
 }
 
